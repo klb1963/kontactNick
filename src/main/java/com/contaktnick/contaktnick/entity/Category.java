@@ -7,12 +7,16 @@ public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String name;
+
     private String phone;
+
     private String email;
+
     @ManyToOne
-    @JoinColumn(name = "category_id")
-    private Category category;
+    @JoinColumn(name = "user_id")
+    private User user;
 
     // Геттеры и сеттеры
     public Long getId() {
@@ -43,11 +47,11 @@ public class Category {
         this.email = email;
     }
 
-    public Category getCategory() {
-        return category;
+    public User getUser() {
+        return user;
     }
 
-    public void setCategory(Category category) {
-        this.category = category;
+    public void setUser(User user) {
+        this.user = user;
     }
 }

@@ -8,7 +8,6 @@ public class ContactDto {
 
     // Конструкторы, геттеры и сеттеры
 
-
     public ContactDto(String name, String phone, String email) {
         this.name = name;
         this.phone = phone;
