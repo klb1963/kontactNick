@@ -46,28 +46,9 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         }
 
         // Перенаправление после успешной аутентификации
-        response.sendRedirect("/profile");
+        response.sendRedirect("/api/profile");
     }
 }
 
-//    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-//        OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
-//        String email = oidcUser.getEmail();
-//        String username = oidcUser.getFullName();
-//
-//        // Проверка, существует ли пользователь в базе
-//        Optional<User> optionalUser = userRepository.findByEmail(email);
-//        if (optionalUser.isEmpty()) {
-//            // Создание нового пользователя
-//            User newUser = new User();
-//            newUser.setEmail(email);
-//            newUser.setNick(email); // Устанавливаем имя пользователя
-//            newUser.setRole(Roles.USER);       // Устанавливаем роль
-//            userRepository.save(newUser);
-//        }
-//
-//        // Перенаправление после успешной аутентификации
-//        response.sendRedirect("/profile");
-//    }
 
 
