@@ -21,6 +21,9 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Category> categories;
 
+    @Enumerated(EnumType.STRING) // Хранение значения enum как строки
+    private Roles role; // Используем enum для ролей
+
     // Геттеры и сеттеры
     public Long getId() {
         return id;
@@ -40,6 +43,13 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public Roles getRole() {
+        return role;
+    }
+    public void setRole(Roles role) {
+        this.role = role;
     }
 
     public List<Category> getCategories() {

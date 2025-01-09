@@ -13,12 +13,14 @@ public class UserController {
     private UserRepository userRepository;
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        return ResponseEntity.ok(userRepository.save(user));
+    public String createUser(@RequestBody User user) {
+        // Здесь сохраняем пользователя в базе данных
+        return "User " + user.getNick() + " created!";
     }
+
     @GetMapping("/{nick}")
-    public ResponseEntity<User> getUserByNick(@PathVariable String nick) {
-        return ResponseEntity.of(userRepository.findByNick(nick));
+    public ResponseEntity<User> getUserByNick(@PathVariable String email) {
+        return ResponseEntity.of(userRepository.findByEmail(email));
     }
 
 }
