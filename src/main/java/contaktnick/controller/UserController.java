@@ -1,7 +1,7 @@
-package com.contaktnick.contaktnick.controller;
+package contaktnick.controller;
 
-import com.contaktnick.contaktnick.entity.User;
-import com.contaktnick.contaktnick.repository.UserRepository;
+import contaktnick.entity.User;
+import contaktnick.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
