@@ -30,6 +30,8 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         )
                         .permitAll() // Разрешить доступ к Swagger UI
+                        .requestMatchers("/api/token").authenticated() // Только для авторизованных
+                        .requestMatchers("/api/categories").authenticated()
                         .anyRequest().authenticated() // Остальные запросы требуют авторизации
                 )
                 .oauth2Login(oauth2 -> oauth2
