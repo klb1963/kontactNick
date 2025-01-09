@@ -1,17 +1,26 @@
-package com.contaktnick.contaktnick.entity;
+package contaktnick.entity;
 
-public class ContactDto {
+import jakarta.persistence.*;
+
+@Entity
+public class Category {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     private String name;
+
     private String phone;
+
     private String email;
 
-    // Конструкторы, геттеры и сеттеры
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
-    public ContactDto(String name, String phone, String email) {
-        this.name = name;
-        this.phone = phone;
-        this.email = email;
+    // Геттеры и сеттеры
+    public Long getId() {
+        return id;
     }
 
     public String getName() {
@@ -36,5 +45,13 @@ public class ContactDto {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

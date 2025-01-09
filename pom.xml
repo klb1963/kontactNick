@@ -11,7 +11,7 @@
 	<groupId>com.contaktnick</groupId>
 	<artifactId>contaktnick</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>contaktnick</name>
+	<name>kontactnick</name>
 	<description>Contacts Exchange Platform</description>
 	<url/>
 	<licenses>

@@ -1,4 +1,4 @@
-package com.contaktnick.contaktnick.entity;
+package contaktnick.entity;
 
 import jakarta.persistence.*;
 
