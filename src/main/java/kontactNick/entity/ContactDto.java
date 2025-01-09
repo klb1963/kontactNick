@@ -1,4 +1,4 @@
-package contaktnick.entity;
+package kontactNick.entity;
 
 public class ContactDto {
 

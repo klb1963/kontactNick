@@ -1,6 +1,6 @@
-package contaktnick.repository;
+package kontactNick.repository;
 
-import contaktnick.entity.Category;
+import kontactNick.entity.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {

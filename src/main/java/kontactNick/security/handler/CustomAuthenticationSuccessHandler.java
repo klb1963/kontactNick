@@ -1,8 +1,8 @@
-package contaktnick.security.handler;
+package kontactNick.security.handler;
 
-import contaktnick.entity.Roles;
-import contaktnick.entity.User;
-import contaktnick.repository.UserRepository;
+import kontactNick.entity.Roles;
+import kontactNick.entity.User;
+import kontactNick.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

@@ -1,6 +1,6 @@
-package contaktnick.security.config;
+package kontactNick.security.config;
 
-import contaktnick.security.handler.CustomAuthenticationSuccessHandler;
+import kontactNick.security.handler.CustomAuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;

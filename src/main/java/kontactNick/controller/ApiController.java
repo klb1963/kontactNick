@@ -1,8 +1,8 @@
-package contaktnick.controller;
+package kontactNick.controller;
 
-import contaktnick.dto.UserProfileDto;
-import contaktnick.entity.User;
-import contaktnick.repository.UserRepository;
+import kontactNick.dto.UserProfileDto;
+import kontactNick.entity.User;
+import kontactNick.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
