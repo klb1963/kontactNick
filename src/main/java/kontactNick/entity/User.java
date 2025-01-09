@@ -1,7 +1,9 @@
 package kontactNick.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -18,11 +20,12 @@ public class User {
     @Column(nullable = false)
     private String email;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<Category> categories;
-
     @Enumerated(EnumType.STRING) // Хранение значения enum как строки
     private Roles role; // Используем enum для ролей
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<Category> categories = new ArrayList<>();
 
     // Геттеры и сеттеры
     public Long getId() {
