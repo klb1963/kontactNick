@@ -1,6 +1,6 @@
-package contaktnick.dto;
+package kontactNick.dto;
 
-import contaktnick.entity.Roles;
+import kontactNick.entity.Roles;
 
 public class UserProfileDto {
 
