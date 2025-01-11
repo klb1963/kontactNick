@@ -8,6 +8,8 @@ import kontactNick.repository.CategoryRepository;
 import kontactNick.repository.FieldRepository;
 import kontactNick.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -124,9 +126,18 @@ public class ApiController {
     }
 
     @GetMapping("/api/token")
-    public ResponseEntity<String> getAccessToken(@AuthenticationPrincipal OidcUser oidcUser) {
-        String accessToken = oidcUser.getIdToken().getTokenValue(); // Получаем токен
-        return ResponseEntity.ok(accessToken);
+    public ResponseEntity<String> getAuthUrl() {
+        String googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code"
+                + "&client_id=YOUR_CLIENT_ID"
+                + "&redirect_uri=http://localhost:8080/login/oauth2/code/google"
+                + "&scope=openid%20profile%20email"
+                + "&state=state_value";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Access-Control-Allow-Origin", "http://localhost:4200");
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(googleAuthUrl);
     }
 
 }
