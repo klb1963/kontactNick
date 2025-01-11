@@ -35,8 +35,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated() // Остальные запросы требуют авторизации
                 )
                 .oauth2Login(oauth2 -> oauth2
-                        .defaultSuccessUrl("/api/profile", true) // Перенаправление после успешной авторизации
-                        .failureUrl("/login?error") // В случае ошибки
+//                        .defaultSuccessUrl("/api/profile", true) // Перенаправление после успешной авторизации
+//                        .failureUrl("/login?error") // В случае ошибки
                         .successHandler(customAuthenticationSuccessHandler) // Обработчик успешной авторизации
                 );
 
