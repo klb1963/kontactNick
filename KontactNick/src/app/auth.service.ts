@@ -1,27 +1,26 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthService {
-  private readonly TOKEN_KEY = 'access_token';
+  private baseUrl = 'http://localhost:8080';
 
   constructor(private http: HttpClient) {}
 
-  getTokenFromServer() {
-    return this.http.get<string>('http://localhost:8080/api/token', { responseType: 'text' as 'json' });
+  getTokenFromServer(): Observable<string> {
+    return this.http.get<string>(`${this.baseUrl}/api/token`);
   }
 
-  saveToken(token: string) {
-    localStorage.setItem(this.TOKEN_KEY, token);
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
+  saveToken(token: string): void {
+    console.log('Token to save:', token); // Для отладки
+    localStorage.setItem('authToken', token);
   }
 
   isLoggedIn(): boolean {
-    return !!this.getToken();
+    const token = localStorage.getItem('authToken');
+    return !!token; // Проверяем, есть ли токен
   }
 }
