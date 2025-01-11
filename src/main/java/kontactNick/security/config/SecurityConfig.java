@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -28,18 +29,18 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html"
-                        )
-                        .permitAll() // Разрешить доступ к Swagger UI
-                        .requestMatchers("/api/token").authenticated() // Только для авторизованных
-                        .requestMatchers("/api/categories").authenticated()
+                        ).permitAll() // Разрешить доступ к Swagger UI
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN") // USER или ADMIN
                         .anyRequest().authenticated() // Остальные запросы требуют авторизации
                 )
                 .oauth2Login(oauth2 -> oauth2
-                        .successHandler(customAuthenticationSuccessHandler) // Подключаем обработчик
+                        .defaultSuccessUrl("/api/profile", true) // Перенаправление после успешной авторизации
+                        .failureUrl("/login?error") // В случае ошибки
+                        .successHandler(customAuthenticationSuccessHandler) // Обработчик успешной авторизации
                 );
 
         return http.build();
-
     }
 
     @Bean

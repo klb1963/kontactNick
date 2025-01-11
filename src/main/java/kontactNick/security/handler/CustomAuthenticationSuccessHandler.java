@@ -46,7 +46,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         }
 
         // Перенаправление после успешной аутентификации
-        response.sendRedirect("/api/profile");
+        response.sendRedirect("/dashboard");
     }
 }
 
