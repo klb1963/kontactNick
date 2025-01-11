@@ -40,6 +40,7 @@ export class UserRegistrationComponent {
   }
 
   googleLogin(): void {
-    console.log('Redirecting to Google login...');
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
   }
+
 }
