@@ -86,6 +86,7 @@ public class ApiController {
         return ResponseEntity.ok(response);
     }
 
+    // add category
     @GetMapping("/categories")
     public ResponseEntity<List<Category>> getCategories(@AuthenticationPrincipal OidcUser oidcUser) {
         String email = oidcUser.getEmail();
@@ -95,7 +96,8 @@ public class ApiController {
         return ResponseEntity.ok(categories);
     }
 
-    @PostMapping("/categories/{categoryId}/fields")
+    // add ONE field to category
+    @PostMapping("/categories/{categoryId}/field")
     public ResponseEntity<String> addFieldToCategory(@PathVariable Long categoryId, @RequestBody Field fieldRequest) {
         Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new RuntimeException("Category not found"));
 
@@ -106,6 +108,19 @@ public class ApiController {
 
         fieldRepository.save(field);
         return ResponseEntity.ok("Field added to category successfully");
+    }
+
+    // add A FEW fields to category
+    @PostMapping("/categories/{categoryId}/fields")
+    public ResponseEntity<String> addFieldsToCategory(@PathVariable Long categoryId, @RequestBody List<Field> fields) {
+        Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new RuntimeException("Category not found"));
+
+        for (Field field : fields) {
+            field.setCategory(category);
+            fieldRepository.save(field);
+        }
+
+        return ResponseEntity.ok("Fields added to category successfully");
     }
 
     @GetMapping("/token")
