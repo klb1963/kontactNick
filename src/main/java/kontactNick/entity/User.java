@@ -20,6 +20,9 @@ public class User {
     @Column(nullable = false)
     private String email;
 
+    @Column(nullable = false)
+    private String password;
+
     @Enumerated(EnumType.STRING) // Хранение значения enum как строки
     private Roles role; // Используем enum для ролей
 
@@ -46,6 +49,14 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public Roles getRole() {

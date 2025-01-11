@@ -1,16 +1,34 @@
-<div class="container">
-  <h1>Регистрация и вход</h1>
-  <form>
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Email</mat-label>
-      <input matInput placeholder="Введите ваш email" #email />
-    </mat-form-field>
-    <button mat-raised-button color="primary" (click)="register(email.value)">
-      Зарегистрироваться
-    </button>
-  </form>
-  <hr />
-  <button mat-raised-button color="accent" (click)="googleLogin()">
-    Войти с помощью Google
-  </button>
+<div class="registration-form">
+  <h2>Register</h2>
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Email</mat-label>
+    <input matInput [(ngModel)]="email" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Password</mat-label>
+    <input matInput type="password" [(ngModel)]="password" />
+  </mat-form-field>
+
+  <button mat-raised-button color="primary" (click)="register()">Register</button>
+  <button mat-raised-button color="accent" (click)="login()">Login</button>
+
+  <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>
 </div>
+
+<!--<div class="container">-->
+<!--  <h1>Регистрация и вход</h1>-->
+<!--  <form>-->
+<!--    <mat-form-field appearance="outline" class="full-width">-->
+<!--      <mat-label>Email</mat-label>-->
+<!--      <input matInput placeholder="Введите ваш email" #email />-->
+<!--    </mat-form-field>-->
+<!--    <button mat-raised-button color="primary" (click)="register(email.value)">-->
+<!--      Зарегистрироваться-->
+<!--    </button>-->
+<!--  </form>-->
+<!--  <hr />-->
+<!--  <button mat-raised-button color="accent" (click)="googleLogin()">-->
+<!--    Войти с помощью Google-->
+<!--  </button>-->
+<!--</div>-->
