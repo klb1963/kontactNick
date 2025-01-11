@@ -123,10 +123,10 @@ public class ApiController {
         return ResponseEntity.ok("Fields added to category successfully");
     }
 
-    @GetMapping("/token")
+    @GetMapping("/api/token")
     public ResponseEntity<String> getAccessToken(@AuthenticationPrincipal OidcUser oidcUser) {
         String accessToken = oidcUser.getIdToken().getTokenValue(); // Получаем токен
-        return ResponseEntity.ok("Access Token: " + accessToken);
+        return ResponseEntity.ok(accessToken);
     }
 
 }

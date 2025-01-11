@@ -1,13 +1,14 @@
 import { bootstrapApplication } from '@angular/platform-browser';
+import { provideHttpClient } from '@angular/common/http';
+import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { importProvidersFrom } from '@angular/core';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { routes } from './app/app.routes';
 import { AppComponent } from './app/app.component';
 
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
-    importProvidersFrom(BrowserAnimationsModule), // Подключение BrowserAnimationsModule
+    provideHttpClient(),
+    provideAnimations(), // Добавляем поддержку анимаций
   ],
-}).catch(err => console.error(err));
+}).catch((err) => console.error(err));
