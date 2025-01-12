@@ -8,9 +8,9 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-user-registration',
-  templateUrl: './user-registration.component.html',
-  styleUrls: ['./user-registration.component.css'],
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css'],
   standalone: true,
   imports: [
     CommonModule,
@@ -20,28 +20,23 @@ import { CommonModule } from '@angular/common';
     FormsModule,
   ],
 })
-export class UserRegistrationComponent {
+export class LoginComponent {
   email = '';
   password = '';
-  confirmPassword = '';
   errorMessage = '';
 
   constructor(private authService: AuthService, private router: Router) {}
 
-  register(): void {
-    if (this.password !== this.confirmPassword) {
-      this.errorMessage = 'Passwords do not match.';
-      return;
-    }
-
-    this.authService.register(this.email, this.password).subscribe({
-      next: () => {
-        console.log('Registration successful');
-        this.router.navigate(['/login']); // Перенаправляем на страницу логина
+  login(): void {
+    this.authService.login(this.email, this.password).subscribe({
+      next: (response) => {
+        console.log('Login successful:', response);
+        this.authService.saveToken(response.token);
+        this.router.navigate(['/dashboard']); // Перенаправляем в личный кабинет
       },
       error: (err) => {
-        console.error('Registration error:', err);
-        this.errorMessage = 'Registration failed. Please try again.';
+        console.error('Login error:', err);
+        this.errorMessage = 'Login failed. Please try again.';
       },
     });
   }

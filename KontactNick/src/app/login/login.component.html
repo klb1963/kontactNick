@@ -1,22 +1,13 @@
 <div class="form-container">
-  <mat-form-field>
+  <mat-form-field class="full-width">
     <input matInput placeholder="Email" [(ngModel)]="email" />
   </mat-form-field>
 
-  <mat-form-field>
+  <mat-form-field class="full-width">
     <input matInput type="password" placeholder="Password" [(ngModel)]="password" />
   </mat-form-field>
 
-  <mat-form-field>
-    <input
-      matInput
-      type="password"
-      placeholder="Confirm Password"
-      [(ngModel)]="confirmPassword"
-    />
-  </mat-form-field>
-
-  <button mat-raised-button color="primary" (click)="register()">Register</button>
+  <button mat-raised-button color="primary" (click)="login()">Login</button>
 
   <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>
 </div>
