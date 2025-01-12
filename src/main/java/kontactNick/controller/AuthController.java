@@ -4,10 +4,10 @@ import kontactNick.dto.LoginDto;
 import kontactNick.dto.UserDto;
 import kontactNick.service.UserService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -20,14 +20,19 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody UserDto userDto) {
+    public ResponseEntity<?> register(@RequestBody UserDto userDto) {
         userService.register(userDto);
-        return ResponseEntity.ok("User registered successfully");
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "User registered successfully");
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody LoginDto loginDto) {
-        String token = userService.authenticate(loginDto);
+        // Аутентификация пользователя
+        String token = userService.authenticate(loginDto.getEmail(), loginDto.getPassword());
+
+        // Возвращаем токен в ответе
         return ResponseEntity.ok(token);
     }
 }

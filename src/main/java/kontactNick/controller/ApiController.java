@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +35,7 @@ public class ApiController {
         this.fieldRepository = fieldRepository;
     }
 
-    // Главная страница API
+    // Главная страница
     @GetMapping("/")
     public String apiRoot() {
         return "Welcome to KontactNick API";
@@ -66,11 +67,11 @@ public class ApiController {
         return ResponseEntity.of(userRepository.findByEmail(email));
     }
 
-    // Страница входа (опционально, если нужна)
-    @GetMapping("/login")
-    public String login() {
-        return "login"; // Отобразите страницу входа, если используете шаблоны
-    }
+//    // Страница входа (опционально, если нужна)
+//    @GetMapping("/login")
+//    public String login() {
+//        return "login"; // Отобразите страницу входа, если используете шаблоны
+//    }
 
     @PostMapping("/categories")
     public ResponseEntity<Map<String, String>> addCategory(@AuthenticationPrincipal OidcUser oidcUser, @RequestBody String categoryName) {
@@ -88,7 +89,8 @@ public class ApiController {
         return ResponseEntity.ok(response);
     }
 
-    // add category
+    // get categories
+    @PreAuthorize("hasRole('USER')")
     @GetMapping("/categories")
     public ResponseEntity<List<Category>> getCategories(@AuthenticationPrincipal OidcUser oidcUser) {
         String email = oidcUser.getEmail();
