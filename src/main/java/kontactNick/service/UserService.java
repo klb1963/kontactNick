@@ -56,4 +56,6 @@ public class UserService {
         return jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
         }
 
+    // Привет!
+
 }
