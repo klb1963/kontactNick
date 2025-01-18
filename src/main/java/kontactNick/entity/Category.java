@@ -2,12 +2,21 @@ package kontactNick.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString(exclude = "fields")  // ✅ Избегает рекурсии при логировании
 @Entity
+@Table(name = "categories")
 public class Category {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -15,32 +24,14 @@ public class Category {
     @Column(nullable = false)
     private String name; // имя категории
 
-    @ManyToOne
+    @Column(nullable = false)
+    private String description; // описание категории
+
+    @ManyToOne(fetch = FetchType.LAZY)  // ✅ Оптимизированная загрузка пользователя
     @JoinColumn(name = "user_id", nullable = false)
     @JsonBackReference
     private User user; // владелец категории
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)  // ✅ Оптимизированная загрузка полей
     private List<Field> fields = new ArrayList<>();
-
-    // Геттеры и сеттеры
-    public Long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
 }
