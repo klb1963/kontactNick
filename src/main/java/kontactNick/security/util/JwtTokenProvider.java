@@ -22,7 +22,7 @@ public class JwtTokenProvider {
 
     public String generateToken(String email, String role) {
         // Логируем входные параметры
-        log.debug("Generating token for email: {}, role: {}", email, role);
+        // log.debug("Generating token for email: {}, role: {}", email, role);
 
         // Проверяем, что jwtSecret не пуст и имеет достаточную длину
         if (jwtSecret == null || jwtSecret.length() < 32) {
@@ -41,7 +41,7 @@ public class JwtTokenProvider {
                 .compact();
 
         // Логируем сгенерированный токен и дату истечения
-        log.debug("Generated token: {} (expires at: {})", token, expiration);
+        // log.debug("Generated token: {} (expires at: {})", token, expiration);
 
         return token;
     }
