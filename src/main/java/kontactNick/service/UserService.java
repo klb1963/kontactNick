@@ -8,6 +8,7 @@ import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
 import kontactNick.security.util.JwtTokenProvider;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -40,22 +41,23 @@ public class UserService {
     }
 
     public String authenticate(String email, String password) {
-    // Находим пользователя по email
+        // Находим пользователя по email
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
-                    log.error("Email not found: " + email);
-                    return new IllegalArgumentException("Invalid email or password");
+                    log.error("Authentication failed: Email not found: {}", email);
+                    return new BadCredentialsException("Invalid email or password");
                 });
+
         // Проверяем пароль
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            log.error("Password mismatch for user: " + email);
-            throw new IllegalArgumentException("Invalid email or password");
+            log.error("Authentication failed: Password mismatch for user: {}", email);
+            return null; // Вместо выбрасывания ошибки, возвращаем null
         }
 
-        // Генерируем и возвращаем токен, включающий email и роль пользователя
-        return jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
-        }
+        // Генерируем и возвращаем токен
+        String token = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
 
-    // Привет!
-
+        log.info("User authenticated successfully: {}", email);
+        return token;
+    }
 }

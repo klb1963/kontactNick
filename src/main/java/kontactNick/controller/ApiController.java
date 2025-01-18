@@ -1,5 +1,6 @@
 package kontactNick.controller;
 
+import kontactNick.dto.CategoryDto;
 import kontactNick.dto.UserProfileDto;
 import kontactNick.entity.Category;
 import kontactNick.entity.Field;
@@ -7,12 +8,15 @@ import kontactNick.entity.User;
 import kontactNick.repository.CategoryRepository;
 import kontactNick.repository.FieldRepository;
 import kontactNick.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api")
 public class ApiController {
@@ -67,33 +72,51 @@ public class ApiController {
         return ResponseEntity.of(userRepository.findByEmail(email));
     }
 
-//    // Страница входа (опционально, если нужна)
+    //    // Страница входа (опционально, если нужна)
 //    @GetMapping("/login")
 //    public String login() {
 //        return "login"; // Отобразите страницу входа, если используете шаблоны
 //    }
 
+    @PreAuthorize("hasRole('USER')")
     @PostMapping("/categories")
-    public ResponseEntity<Map<String, String>> addCategory(@AuthenticationPrincipal OidcUser oidcUser, @RequestBody String categoryName) {
-        String email = oidcUser.getEmail();
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+    public ResponseEntity<Category> createCategory(@RequestBody CategoryDto categoryDto) {
+        // извлекаем текущего пользователя из контекста
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        // находим его email
+        String email = authentication.getName();
+        log.debug("Authenticated email: {}", email);
 
+        // находим собственно пользователя по его email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        log.debug("Found user: {} with ID: {}", user.getEmail(), user.getId());
+
+        // Создаем категорию
         Category category = new Category();
-        category.setName(categoryName);
-        category.setUser(user);
+        category.setName(categoryDto.getName());
+        category.setDescription(category.getDescription());
+        category.setUser(user); // Связываем категорию с пользователем
+        //сохраняем категорию
+        Category savedCategory = categoryRepository.save(category);
 
-        categoryRepository.save(category);
+        log.debug("Saved category '{}' for user ID: {}", savedCategory.getName(), savedCategory.getUser().getId());
 
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Category added successfully");
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedCategory);
     }
 
     // get categories
     @PreAuthorize("hasRole('USER')")
     @GetMapping("/categories")
     public ResponseEntity<List<Category>> getCategories(@AuthenticationPrincipal OidcUser oidcUser) {
-        String email = oidcUser.getEmail();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("User not authenticated");
+        }
+
+        String email = authentication.getName(); // Получаем email из токена
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
         List<Category> categories = categoryRepository.findByUserId(user.getId());
