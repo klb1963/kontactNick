@@ -26,9 +26,9 @@ public class AuthController {
 
     public AuthController(UserService userService) {
         this.userService = userService;
-//        log.info("AuthController initialized"); // Проверяем, вызывается ли конструктор
-//        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-//        loggerContext.getLogger("kontactNick.controller").setLevel(Level.DEBUG);
+        log.info("AuthController initialized"); // Проверяем, вызывается ли конструктор
+        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+        loggerContext.getLogger("kontactNick.controller").setLevel(Level.DEBUG);
 
     }
 

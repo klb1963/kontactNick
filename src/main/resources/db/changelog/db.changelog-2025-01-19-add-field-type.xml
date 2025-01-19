@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
+
+    <changeSet id="2025-01-19-01-add-field-type" author="LeonidK">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="fields" columnName="field_type"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="fields">
+            <column name="field_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

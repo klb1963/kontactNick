@@ -2,12 +2,21 @@ package kontactNick.entity;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import kontactNick.entity.Category;
+import kontactNick.entity.Roles;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString(exclude = "categories")  // ✅ Избегает рекурсии при логировании
 @Entity
-@Table(name = "users") // Измените имя таблицы
+@Table(name = "users") // Явное указание имени таблицы
 public class User {
 
     @Id
@@ -17,63 +26,19 @@ public class User {
     @Column(unique = true, nullable = true)
     private String nick;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true) // Email должен быть уникальным
     private String email;
 
-    @Column(name = "password", nullable = true)
+    @Column(nullable = true)
     private String password;
 
-    @Enumerated(EnumType.STRING) // Хранение значения enum как строки
-    private Roles role; // Используем enum для ролей
+    @Enumerated(EnumType.STRING) // ✅ Enum хранится как строка
+    @Column(nullable = false)
+    private Roles role;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY) // ✅ Оптимизированная загрузка
     @JsonManagedReference
     private List<Category> categories = new ArrayList<>();
-
-    // Геттеры и сеттеры
-    public Long getId() {
-        return id;
-    }
-
-    public String getNick() {
-        return nick;
-    }
-
-    public void setNick(String nick) {
-        this.nick = nick;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public Roles getRole() {
-        return role;
-    }
-    public void setRole(Roles role) {
-        this.role = role;
-    }
-
-    public List<Category> getCategories() {
-        return categories;
-    }
-
-    public void setCategories(List<Category> categories) {
-        this.categories = categories;
-    }
 }
-
 
 

@@ -7,8 +7,11 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ContactDto {
+public class FieldDto {
+    private Long id;
     private String name;
-    private String phone;
-    private String email;
+    private String description;
+    private String fieldType;
+    private String value;
 }
+
