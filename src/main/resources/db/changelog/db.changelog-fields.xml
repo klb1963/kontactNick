@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
+
+    <!-- Создание таблицы fields -->
+    <changeSet id="2025-01-18-01-create-fields-table" author="LeonidK">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="fields"/>
+            </not>
+        </preConditions>
+        <createTable tableName="fields">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="category_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_fields_category" referencedTableName="categories" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Добавление колонки field_type (безопасное добавление) -->
+    <changeSet id="2025-01-19-01-add-field-type" author="LeonidK">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="fields" columnName="field_type"/>
+            </not>
+        </preConditions>
+
+        <!-- Шаг 1: Добавляем колонку без NOT NULL -->
+        <addColumn tableName="fields">
+            <column name="field_type" type="VARCHAR(100)"/>
+        </addColumn>
+
+        <!-- Шаг 2: Заполняем существующие строки значением по умолчанию -->
+        <update tableName="fields">
+            <column name="field_type" value="TEXT"/>
+        </update>
+
+        <!-- Шаг 3: Устанавливаем ограничение NOT NULL -->
+        <addNotNullConstraint tableName="fields" columnName="field_type"/>
+    </changeSet>
+
+    <!-- Добавление колонки value, если её нет -->
+    <changeSet id="2025-01-19-03-add-value-column" author="LeonidK">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="fields" columnName="value"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="fields">
+            <column name="value" type="TEXT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="2025-01-19-04-add-description-column" author="LeonidK">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="fields" columnName="description"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="fields">
+            <column name="description" type="TEXT"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

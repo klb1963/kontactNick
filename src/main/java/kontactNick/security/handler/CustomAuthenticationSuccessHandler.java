@@ -39,7 +39,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             User newUser = new User();
             newUser.setEmail(email);
             newUser.setNick(email);
-            newUser.setRole(Roles.USER); // Установите роль по умолчанию
+            newUser.setRole(Roles.ROLE_USER); // Установите роль по умолчанию
 
             System.out.println("Saving user: " + newUser);
             userRepository.save(newUser); // Сохраняем пользователя в базе

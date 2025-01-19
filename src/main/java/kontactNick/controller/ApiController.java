@@ -1,6 +1,7 @@
 package kontactNick.controller;
 
 import kontactNick.dto.CategoryDto;
+import kontactNick.dto.FieldDto;
 import kontactNick.dto.UserProfileDto;
 import kontactNick.entity.Category;
 import kontactNick.entity.Field;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -78,7 +80,7 @@ public class ApiController {
 //        return "login"; // Отобразите страницу входа, если используете шаблоны
 //    }
 
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     @PostMapping("/categories")
     public ResponseEntity<Category> createCategory(@RequestBody CategoryDto categoryDto) {
         // извлекаем текущего пользователя из контекста
@@ -96,7 +98,7 @@ public class ApiController {
         // Создаем категорию
         Category category = new Category();
         category.setName(categoryDto.getName());
-        category.setDescription(category.getDescription());
+        category.setDescription(categoryDto.getDescription()); // ✅ Исправлено
         category.setUser(user); // Связываем категорию с пользователем
         //сохраняем категорию
         Category savedCategory = categoryRepository.save(category);
@@ -107,7 +109,7 @@ public class ApiController {
     }
 
     // get categories
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     @GetMapping("/categories")
     public ResponseEntity<List<Category>> getCategories(@AuthenticationPrincipal OidcUser oidcUser) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -124,20 +126,32 @@ public class ApiController {
     }
 
     // add ONE field to category
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     @PostMapping("/categories/{categoryId}/field")
-    public ResponseEntity<String> addFieldToCategory(@PathVariable Long categoryId, @RequestBody Field fieldRequest) {
+    public ResponseEntity<String> addFieldToCategory(@PathVariable Long categoryId, @RequestBody FieldDto fieldRequest) {
+        log.debug("Received request to add field to category with ID: {}", categoryId);
+
+        // Проверяем, существует ли категория
         Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new RuntimeException("Category not found"));
 
+        log.debug("Category found: {}", category.getName());
+
+        // Создаем новое поле
         Field field = new Field();
         field.setName(fieldRequest.getName());
         field.setFieldType(fieldRequest.getFieldType());
+        field.setValue(fieldRequest.getValue());
         field.setCategory(category);
 
         fieldRepository.save(field);
+
+        log.debug("Field saved successfully with ID: {}", field.getId());
+
         return ResponseEntity.ok("Field added to category successfully");
     }
 
     // add A FEW fields to category
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     @PostMapping("/categories/{categoryId}/fields")
     public ResponseEntity<String> addFieldsToCategory(@PathVariable Long categoryId, @RequestBody List<Field> fields) {
         Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new RuntimeException("Category not found"));
@@ -148,6 +162,26 @@ public class ApiController {
         }
 
         return ResponseEntity.ok("Fields added to category successfully");
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @GetMapping("/categories/{categoryId}/fields")
+    public ResponseEntity<List<FieldDto>> getFieldsByCategory(@PathVariable Long categoryId) {
+        log.debug("Fetching fields for category ID: {}", categoryId);
+
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        List<FieldDto> fields = category.getFields().stream()
+                .map(field -> new FieldDto(
+                        field.getId(),
+                        field.getName(),
+                        field.getDescription(),
+                        field.getFieldType(),
+                        field.getValue()))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(fields);
     }
 
     @GetMapping("/api/token")

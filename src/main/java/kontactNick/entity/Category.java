@@ -24,7 +24,7 @@ public class Category {
     @Column(nullable = false)
     private String name; // имя категории
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String description; // описание категории
 
     @ManyToOne(fetch = FetchType.LAZY)  // ✅ Оптимизированная загрузка пользователя

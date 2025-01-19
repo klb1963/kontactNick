@@ -1,9 +1,7 @@
 package kontactNick.entity;
 
 public enum Roles {
-    USER, // Обычный пользователь
-    ADMIN, // Администратор
-    MODERATOR; // Дополнительная роль, если нужна
+    ROLE_USER, ROLE_ADMIN;
 
     @Override
     public String toString() {

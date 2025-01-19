@@ -1,29 +1,15 @@
 package kontactNick.dto;
 
 import kontactNick.entity.Roles;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserProfileDto {
-
     private String nick;
     private String email;
     private Roles role;
-
-    // Конструктор
-    public UserProfileDto(String nick, String email, Roles role) {
-        this.nick = nick;
-        this.email = email;
-        this.role = role;
-    }
-
-    public String getNick() {
-        return nick;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public Roles getRole() {
-        return role;
-    }
 }
