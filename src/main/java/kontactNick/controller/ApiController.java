@@ -48,7 +48,7 @@ public class ApiController {
         return "Welcome to KontactNick API";
     }
 
-    // Эндпоинт для профиля пользователя
+    // Эндпойнт для профиля пользователя
     @GetMapping("/profile")
     public ResponseEntity<UserProfileDto> getProfile(@AuthenticationPrincipal OidcUser oidcUser) {
         String email = oidcUser.getEmail();

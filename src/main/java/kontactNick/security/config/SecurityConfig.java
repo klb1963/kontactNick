@@ -2,6 +2,7 @@ package kontactNick.security.config;
 
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
+import kontactNick.security.handler.CustomOAuth2SuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -36,12 +37,19 @@ public class SecurityConfig {
                 .cors().and() // Разрешаем CORS
                 .csrf().disable()
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/register", "/api/auth/login").permitAll() // Разрешаем доступ
+                        .requestMatchers("/", "/api/auth/register", "/api/auth/login").permitAll() // Разрешаем доступ на логин и регистрацию
+                        .requestMatchers("/api/oauth2/profile").authenticated()
                         .requestMatchers("/api/categories").hasAuthority("ROLE_USER")
-                        .requestMatchers(HttpMethod.POST, "/api/categories/{categoryId}/field").hasAuthority("ROLE_USER")// Доступ к полям в категориях
+                        .requestMatchers(HttpMethod.POST, "/api/categories/{categoryId}/field").hasAuthority("ROLE_USER") // Доступ к полям
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // JWT не использует сессии
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // Включаем сессию для OAuth2
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(new CustomOAuth2SuccessHandler()) // Обрабатываем успешный вход
+                )
+                .logout(logout -> logout
+                        .logoutSuccessUrl("/").permitAll() // Разрешаем выход из системы
+                )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // Добавляем JWT фильтр
                 .addFilterAfter((request, response, chain) -> {
                     if (request instanceof HttpServletRequest) {
