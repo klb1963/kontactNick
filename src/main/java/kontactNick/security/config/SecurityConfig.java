@@ -3,11 +3,11 @@ package kontactNick.security.config;
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
 import kontactNick.security.handler.CustomOAuth2SuccessHandler;
+import kontactNick.service.UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,13 +18,10 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-    }
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -32,7 +29,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter,CustomOAuth2SuccessHandler customOAuth2SuccessHandler) throws Exception {
         http
                 .cors().and() // Разрешаем CORS
                 .csrf().disable()
@@ -45,7 +42,7 @@ public class SecurityConfig {
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // Включаем сессию для OAuth2
                 .oauth2Login(oauth2 -> oauth2
-                        .successHandler(new CustomOAuth2SuccessHandler()) // Обрабатываем успешный вход
+                        .successHandler(customOAuth2SuccessHandler) // Обрабатываем успешный вход
                 )
                 .logout(logout -> logout
                         .logoutSuccessUrl("/").permitAll() // Разрешаем выход из системы

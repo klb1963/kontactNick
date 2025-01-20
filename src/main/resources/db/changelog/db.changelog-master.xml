@@ -9,5 +9,6 @@
     <include file="db/changelog/changeset-001-init.xml"/>
     <include file="db/changelog/db.changelog-fields.xml"/> <!-- ✅ Добавили новый changelog -->
     <include file="db/changelog/db.changelog-2025-01-19-add-field-type.xml"/>
+    <include file="db/changelog/db.changelog-2025-01-20-add-avatar-url.xml"/>
 
 </databaseChangeLog>

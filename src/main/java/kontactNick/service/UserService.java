@@ -1,5 +1,6 @@
 package kontactNick.service;
 
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import kontactNick.dto.LoginDto;
 import kontactNick.dto.UserDto;
@@ -8,12 +9,16 @@ import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
 import kontactNick.security.util.JwtTokenProvider;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-@Slf4j
+import java.util.Optional;
+
 @Service
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
@@ -33,7 +38,7 @@ public class UserService {
 
         User user = new User();
         user.setEmail(userDto.getEmail());
-        user.setNick(user.getEmail());
+        user.setNick(userDto.getEmail());
         user.setRole(Roles.ROLE_USER);
         user.setPassword(passwordEncoder.encode(userDto.getPassword()));
 
@@ -55,9 +60,37 @@ public class UserService {
         }
 
         // Генерируем и возвращаем токен
-        String token = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
+        String token = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
 
         log.info("User authenticated successfully: {}", email);
         return token;
+    }
+
+    /**
+     * ✅ Метод для сохранения или обновления пользователя при входе через Google OAuth2
+     */
+    @Transactional
+    public User saveOrUpdateUser(String email, String nick, String avatarUrl) {
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+
+        if (optionalUser.isPresent()) {
+            // Обновляем существующего пользователя
+            User user = optionalUser.get();
+            user.setNick(nick);
+            user.setAvatarUrl(avatarUrl);
+            return userRepository.save(user);
+        } else {
+            // Создаем нового пользователя
+            User newUser = new User();
+            newUser.setEmail(email);
+            newUser.setNick(nick);
+            newUser.setAvatarUrl(avatarUrl);
+            newUser.setRole(Roles.ROLE_USER); // или другое значение по умолчанию
+            return userRepository.save(newUser);
+        }
+    }
+
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 }
