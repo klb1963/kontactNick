@@ -28,19 +28,21 @@ public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
-    private final UserRepository userRepository; // Добавляем репозиторий
 
-    public UserController(UserService userService, UserRepository userRepository) {
+    public UserController(UserService userService) {
         this.userService = userService;
-        this.userRepository = userRepository;
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<?> getProfile(OAuth2AuthenticationToken authentication) {
-        String email = authentication.getPrincipal().getAttribute("email");
+    public ResponseEntity<?> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
+        }
+
+        String email = userDetails.getUsername();
 
         // Получаем пользователя из базы
-        Optional<User> userOptional = userRepository.findByEmail(email);
+        Optional<User> userOptional = userService.getUserByEmail(email);
         if (userOptional.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }

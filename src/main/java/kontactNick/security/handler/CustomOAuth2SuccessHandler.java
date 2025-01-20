@@ -4,6 +4,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import kontactNick.entity.User;
+import kontactNick.security.util.JwtTokenProvider;
 import kontactNick.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,10 +23,12 @@ import java.io.IOException;
 public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final UserService userService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Autowired
-    public CustomOAuth2SuccessHandler(@Lazy UserService userService) { // ✅ Инжектируем UserService, @Lazy разрывает цикл
+    public CustomOAuth2SuccessHandler(@Lazy UserService userService, JwtTokenProvider jwtTokenProvider) {
         this.userService = userService;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @Override
@@ -36,27 +40,17 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
             String avatarUrl = oidcUser.getPicture();
 
             System.out.println("OAuth2 Login Successful: " + email);
-            System.out.println("Nick before saving: " + nick);
-            System.out.println("Avatar URL: " + avatarUrl);
 
             // Сохраняем или обновляем пользователя в БД
-            userService.saveOrUpdateUser(email, nick, avatarUrl);
+            User user = userService.saveOrUpdateUser(email, nick, avatarUrl);
 
-            // Сохраняем пользователя в SecurityContext
-            SecurityContext context = SecurityContextHolder.createEmptyContext();
-            context.setAuthentication(authentication);
-            SecurityContextHolder.setContext(context);
+            // Генерируем JWT
+            String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
 
-            // Явно сохраняем контекст в сессии
-            HttpSession session = request.getSession(true);
-            session.setAttribute("SPRING_SECURITY_CONTEXT", context);
-
-            // Перенаправляем на профиль
-            response.sendRedirect("/api/oauth2/profile");
-            return;
+            // Устанавливаем JSON-ответ
+            response.setContentType("application/json");
+            response.getWriter().write("{\"token\":\"" + jwt + "\"}");
+            response.getWriter().flush();
         }
-
-        // Если не OIDC-пользователь, выполняем стандартное поведение
-        super.onAuthenticationSuccess(request, response, authentication);
     }
 }
