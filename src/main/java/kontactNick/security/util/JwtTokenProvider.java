@@ -3,6 +3,7 @@ package kontactNick.security.util;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import kontactNick.entity.Roles;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,7 @@ public class JwtTokenProvider {
     @Value("${jwt.expiration-ms}")
     private long jwtExpirationMs;
 
-    public String generateToken(String email, String role) {
+    public String generateToken(String email, Roles role) {
         // Логируем входные параметры
         log.debug("Generating token for email: {}, role: {}", email, role);
 
@@ -34,7 +35,7 @@ public class JwtTokenProvider {
 
         String token = Jwts.builder()
                 .setSubject(email) // В качестве subject передается email
-                .claim("role", role) // Добавляем роль в payload
+                .claim("role", role.name()) // Добавляем роль в payload
                 .setIssuedAt(issuedAt)
                 .setExpiration(expiration) // Токен действителен 1 день
                 .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS512)

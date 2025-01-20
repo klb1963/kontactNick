@@ -1,0 +1,18 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
+
+    <changeSet id="2025-01-20-01-add-avatar-url" author="LeonidK">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="users" columnName="avatar_url"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="users">
+            <column name="avatar_url" type="TEXT"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

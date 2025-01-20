@@ -26,7 +26,7 @@ public class User {
     @Column(unique = true, nullable = true)
     private String nick;
 
-    @Column(nullable = false, unique = true) // Email должен быть уникальным
+    @Column(nullable = false, unique = true) // ✅ Email должен быть уникальным
     private String email;
 
     @Column(nullable = true)
@@ -35,6 +35,9 @@ public class User {
     @Enumerated(EnumType.STRING) // ✅ Enum хранится как строка
     @Column(nullable = false)
     private Roles role;
+
+    @Column(nullable = true)
+    private String avatarUrl; // ✅ Добавили поле для ссылки на аватар
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY) // ✅ Оптимизированная загрузка
     @JsonManagedReference
