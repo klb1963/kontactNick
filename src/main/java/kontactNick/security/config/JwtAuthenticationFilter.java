@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import kontactNick.entity.User;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,6 +16,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import java.util.Collections;
+
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -25,7 +31,7 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Value("${jwt.secret}")
-    private String jwtSecret; // Используем секретный ключ из конфигурации
+    private String jwtSecret;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -34,8 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         log.debug("JwtAuthenticationFilter: Filtering request: {} {}", request.getMethod(), request.getRequestURI());
 
         String header = request.getHeader("Authorization");
-
-        log.debug("JwtAuthenticationFilter: Incoming request to {} {}", request.getMethod(), request.getRequestURI());
+        log.debug("JwtAuthenticationFilter: Authorization header: {}", header);
 
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7); // Убираем "Bearer "
@@ -53,13 +58,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 log.debug("JwtAuthenticationFilter: Token parsed. Email: {}, Role: {}", email, role);
 
-                // Проверяем, что SecurityContextHolder пуст, чтобы не перезаписывать
+                // Добавляем роль по умолчанию, если не найдено
+                if (role == null) {
+                    role = "ROLE_USER";
+                    log.warn("JwtAuthenticationFilter: Role is missing in token. Setting default ROLE_USER.");
+                }
+
                 if (SecurityContextHolder.getContext().getAuthentication() == null) {
                     log.debug("JwtAuthenticationFilter: Setting authentication in SecurityContextHolder");
 
-                    // Создаем аутентификацию пользователя
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            email, null, Collections.singleton(new SimpleGrantedAuthority(role)));
+                    // Создаем UserDetails
+                    UserDetails userDetails = User.builder()
+                            .username(email)
+                            .password("") // Пароль не нужен, но должен быть указан
+                            .authorities(Collections.singletonList(new SimpleGrantedAuthority(role)))
+                            .build();
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }

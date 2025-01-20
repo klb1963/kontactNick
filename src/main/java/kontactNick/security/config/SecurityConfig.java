@@ -1,9 +1,7 @@
 package kontactNick.security.config;
 
-import jakarta.servlet.Filter;
-import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import kontactNick.security.handler.CustomOAuth2SuccessHandler;
-import kontactNick.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +12,13 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
+
+import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
@@ -22,6 +26,7 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -29,34 +34,47 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter,CustomOAuth2SuccessHandler customOAuth2SuccessHandler) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors().and() // Разрешаем CORS
+                .cors(withDefaults()) // Разрешаем CORS
                 .csrf().disable()
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/auth/register", "/api/auth/login").permitAll() // Разрешаем доступ на логин и регистрацию
-                        .requestMatchers("/api/oauth2/profile").authenticated()
-                        .requestMatchers("/api/categories").hasAuthority("ROLE_USER")
-                        .requestMatchers(HttpMethod.POST, "/api/categories/{categoryId}/field").hasAuthority("ROLE_USER") // Доступ к полям
+                        .requestMatchers("/", "/api/auth/register", "/api/auth/login").permitAll() // ✅ Открытые эндпоинты
+                        .requestMatchers("/api/oauth2/profile").authenticated() // ✅ Требует JWT
+                        .requestMatchers("/api/categories").hasAuthority("ROLE_USER") // ✅ Требует роль
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // Включаем сессию для OAuth2
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // ✅ Отключаем сессии
+                .securityContext(securityContext -> securityContext.disable()) // ✅ Отключаем SecurityContext
+                .sessionManagement(session -> session.sessionFixation().none()) // ✅ Отключаем смену sessionId
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(customOAuth2SuccessHandler) // Обрабатываем успешный вход
                 )
                 .logout(logout -> logout
                         .logoutSuccessUrl("/").permitAll() // Разрешаем выход из системы
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // Добавляем JWT фильтр
-                .addFilterAfter((request, response, chain) -> {
-                    if (request instanceof HttpServletRequest) {
-                        HttpServletRequest httpRequest = (HttpServletRequest) request;
-                        System.out.println("Request URL: " + httpRequest.getRequestURL());
-                    }
-                    chain.doFilter(request, response);
-                }, SecurityContextHolderFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // ✅ JWT перед аутентификацией
+                .exceptionHandling(exc -> exc
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\": \"Unauthorized\"}");
+                        })
+                );
 
         return http.build();
     }
 
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:4200")); // ✅ Разреши фронт (или нужный домен)
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
+        configuration.setAllowCredentials(true);
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 }
