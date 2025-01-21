@@ -9,5 +9,13 @@
 
   <button mat-raised-button color="primary" (click)="login()">Login</button>
 
+  <button mat-raised-button color="accent" (click)="loginWithGoogle()">
+    Войти через Google
+  </button>
+
+  <p>
+    Нет аккаунта? <a [routerLink]="['/register']">Зарегистрироваться</a>
+  </p>
+
   <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>
 </div>

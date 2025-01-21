@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import {Router, RouterLink} from '@angular/router';
 import { AuthService } from '../auth.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -18,6 +18,7 @@ import { CommonModule } from '@angular/common';
     MatInputModule,
     MatButtonModule,
     FormsModule,
+    RouterLink,
   ],
 })
 export class UserRegistrationComponent {
@@ -44,5 +45,10 @@ export class UserRegistrationComponent {
         this.errorMessage = 'Registration failed. Please try again.';
       },
     });
+  }
+
+  // ✅ Метод для регистрации через Google
+  registerWithGoogle(): void {
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
   }
 }

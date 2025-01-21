@@ -74,18 +74,25 @@ public class UserService {
         Optional<User> optionalUser = userRepository.findByEmail(email);
 
         if (optionalUser.isPresent()) {
-            // Обновляем существующего пользователя
+            // 🔹 Обновляем существующего пользователя
             User user = optionalUser.get();
             user.setNick(nick);
             user.setAvatarUrl(avatarUrl);
+
+            // ✅ Убедимся, что в БД нет дублирования "ROLE_ROLE_USER"
+            if (user.getRole().name().startsWith("ROLE_ROLE_")) {
+                user.setRole(Roles.ROLE_USER); // Исправляем дублированное значение
+            }
+
             return userRepository.save(user);
         } else {
-            // Создаем нового пользователя
+            // 🔹 Создаем нового пользователя
             User newUser = new User();
             newUser.setEmail(email);
             newUser.setNick(nick);
             newUser.setAvatarUrl(avatarUrl);
-            newUser.setRole(Roles.ROLE_USER); // или другое значение по умолчанию
+            newUser.setRole(Roles.ROLE_USER); // ✅ Явно устанавливаем корректное значение
+
             return userRepository.save(newUser);
         }
     }

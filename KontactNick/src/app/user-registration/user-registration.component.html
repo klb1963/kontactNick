@@ -17,6 +17,14 @@
   </mat-form-field>
 
   <button mat-raised-button color="primary" (click)="register()">Register</button>
+  <button mat-raised-button color="accent" (click)="registerWithGoogle()">
+    Регистрация через Google
+  </button>
+  <p>
+    Уже есть аккаунт? <a [routerLink]="['/login']">Войти</a>
+  </p>
+
+  <hr />
 
   <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>
 </div>

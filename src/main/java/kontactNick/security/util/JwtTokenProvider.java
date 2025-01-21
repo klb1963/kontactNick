@@ -33,9 +33,11 @@ public class JwtTokenProvider {
         Date issuedAt = new Date();
         Date expiration = new Date(System.currentTimeMillis() + jwtExpirationMs);
 
+        String normalizedRole = role.toString(); // ❗ Используем toString() вместо name()
+
         String token = Jwts.builder()
                 .setSubject(email) // В качестве subject передается email
-                .claim("role", role.name()) // Добавляем роль в payload
+                .claim("role", normalizedRole) // ❗ Передаем роль без лишнего "ROLE_ROLE_"
                 .setIssuedAt(issuedAt)
                 .setExpiration(expiration) // Токен действителен 1 день
                 .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS512)

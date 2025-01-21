@@ -1,6 +1,7 @@
 package kontactNick.security.handler;
 
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -47,10 +48,29 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
             // Генерируем JWT
             String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
 
-            // Устанавливаем JSON-ответ
-            response.setContentType("application/json");
-            response.getWriter().write("{\"token\":\"" + jwt + "\"}");
-            response.getWriter().flush();
+            // Логируем токен
+            System.out.println("Generated JWT: " + jwt);
+
+            // ✅ Редиректим с токеном в URL
+            response.sendRedirect("http://localhost:4200/dashboard?token=" + jwt);
         }
     }
 }
+
+
+// Устанавливаем JSON-ответ
+//            response.setContentType("application/json");
+//            response.getWriter().write("{\"token\":\"" + jwt + "\"}");
+//            response.getWriter().flush();
+
+// Делаем редирект на фронтенд, передавая токен в URL
+// System.out.println("Redirecting to frontend with token: " + jwt);
+// response.sendRedirect("http://localhost:4200/dashboard?token=" + jwt);
+
+// ✅ Сохраняем токен в HTTP-only Cookie (защищает от XSS)
+//Cookie jwtCookie = new Cookie("jwt", jwt);
+//            jwtCookie.setHttpOnly(true); // Делаем его недоступным для JS
+//            jwtCookie.setPath("/"); // Доступен для всего приложения
+//            jwtCookie.setMaxAge(60 * 60 * 24); // 1 день жизни
+//
+//            response.addCookie(jwtCookie);
