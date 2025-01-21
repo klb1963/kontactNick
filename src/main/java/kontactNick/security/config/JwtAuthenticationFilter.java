@@ -68,11 +68,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     log.debug("JwtAuthenticationFilter: Setting authentication in SecurityContextHolder");
 
                     // Создаем UserDetails
-                    UserDetails userDetails = User.builder()
-                            .username(email)
-                            .password("") // Пароль не нужен, но должен быть указан
-                            .authorities(Collections.singletonList(new SimpleGrantedAuthority(role)))
-                            .build();
+                    UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                            email, "", Collections.singletonList(new SimpleGrantedAuthority(role))
+                    );
 
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
