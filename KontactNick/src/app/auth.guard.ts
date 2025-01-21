@@ -1,18 +1,23 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
-import { AuthService } from './auth.service'; // ваш сервис для авторизации
+import { AuthService } from './auth.service';
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
 export class AuthGuard implements CanActivate {
+
   constructor(private authService: AuthService, private router: Router) {}
 
   canActivate(): boolean {
+    console.log('AuthGuard: Checking authentication status'); // ✅ Логируем вызов Guard
+
     if (this.authService.isLoggedIn()) {
-      return true;
+      console.log('AuthGuard: User is authenticated'); // ✅ Пользователь залогинен
+      return true; // ✅ Доступ разрешен
     } else {
-      this.router.navigate(['/user-registration']); // перенаправление на страницу входа
+      console.log('AuthGuard: User is NOT authenticated, redirecting to login'); // ⛔ Пользователь не залогинен
+      this.router.navigate(['/login']); // ⛔ Перенаправляем на логин
       return false;
     }
   }

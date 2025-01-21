@@ -17,3 +17,12 @@
   max-width: 400px; /* Ограничьте ширину формы */
   margin: 0 auto; /* Центрируйте форму */
 }
+
+a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
