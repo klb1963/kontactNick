@@ -2,14 +2,21 @@ package kontactNick.controller;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import kontactNick.dto.LoginDto;
 import kontactNick.dto.UserDto;
+import kontactNick.entity.Roles;
+import kontactNick.security.util.JwtTokenProvider;
 import kontactNick.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,9 +30,11 @@ import java.util.Map;
 public class AuthController {
 
     private final UserService userService;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthController(UserService userService) {
+    public AuthController(UserService userService, JwtTokenProvider jwtTokenProvider) {
         this.userService = userService;
+        this.jwtTokenProvider = jwtTokenProvider;
         log.info("AuthController initialized"); // Проверяем, вызывается ли конструктор
         LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
         loggerContext.getLogger("kontactNick.controller").setLevel(Level.DEBUG);
@@ -57,4 +66,20 @@ public class AuthController {
         // Возвращаем токен в JSON-формате
         return ResponseEntity.ok(Collections.singletonMap("token", token));
     }
+
+    @GetMapping("/token")
+    public ResponseEntity<Map<String, String>> getAuthToken(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+
+        if (session == null || session.getAttribute("jwt") == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User is not authenticated"));
+        }
+
+        String token = (String) session.getAttribute("jwt");
+
+        log.debug("🔑 Returning stored token: {}", token);
+        return ResponseEntity.ok(Map.of("token", token));
+    }
+
 }
+
