@@ -1,39 +1,36 @@
 package kontactNick.security.handler;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import kontactNick.entity.User;
 import kontactNick.security.util.JwtTokenProvider;
+import kontactNick.service.TokenService;
 import kontactNick.service.UserService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Collections;
 
 @Component
 public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
-    private final ObjectMapper objectMapper;
+    private final TokenService tokenService;
 
     @Autowired
-    public CustomOAuth2SuccessHandler(@Lazy UserService userService, JwtTokenProvider jwtTokenProvider, ObjectMapper objectMapper) {
+    public CustomOAuth2SuccessHandler(@Lazy UserService userService, JwtTokenProvider jwtTokenProvider, TokenService tokenService) {
         this.userService = userService;
         this.jwtTokenProvider = jwtTokenProvider;
-        this.objectMapper = objectMapper;
+        this.tokenService = tokenService;
     }
 
     @Override
@@ -52,22 +49,23 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
             // ✅ Сохраняем/обновляем пользователя в БД
             User user = userService.saveOrUpdateUser(email, nick, avatarUrl);
 
+
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+
+
             // ✅ Генерируем JWT
             String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
 
             // ✅ Логируем токен (удобно для отладки)
             System.out.println("🔑 Generated JWT: " + jwt);
 
-            // ✅ Сохраняем токен в сессии
-            HttpSession session = request.getSession();
-            session.setAttribute("jwt", jwt);
-            System.out.println("✅ JWT stored in session: " + session.getAttribute("jwt"));
-
             // ✅ Редиректим на фронт c токеном в URL
             String redirectUrl = "http://localhost:4200/dashboard";
             System.out.println("✅ Redirecting to: " + redirectUrl);
-            String token = objectMapper.writeValueAsString(Collections.singletonMap("token", jwt));
-            response.getWriter().write(token);
+            final ResponseCookie accessTokenCookie = tokenService.generateCookie(jwt);
+            response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
             response.sendRedirect(redirectUrl);
 
         } else {
