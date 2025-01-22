@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import {Injectable} from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {Router} from '@angular/router';
+import {Observable} from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -9,16 +9,17 @@ import { Observable } from 'rxjs';
 export class AuthService {
   private baseUrl = 'http://localhost:8080/api/auth'; // ✅ Добавляем базовый URL API
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private http: HttpClient, private router: Router) {
+  }
 
   /** ✅ Метод регистрации */
   register(email: string, password: string): Observable<{ token: string }> {
-    return this.http.post<{ token: string }>(`${this.baseUrl}/register`, { email, password });
+    return this.http.post<{ token: string }>(`${this.baseUrl}/register`, {email, password});
   }
 
   /** ✅ Метод логина */
   login(email: string, password: string): Observable<{ token: string }> {
-    return this.http.post<{ token: string }>(`${this.baseUrl}/login`, { email, password });
+    return this.http.post<{ token: string }>(`${this.baseUrl}/login`, {email, password});
   }
 
   /** ✅ Сохранение токена */
@@ -47,8 +48,8 @@ export class AuthService {
   getGoogleToken(): Observable<any> {
     console.log('🔍 AuthService: Requesting token from backend...');
 
-    const headers = { Authorization: `Bearer ${this.getToken()}` };
-    return this.http.get<{ token: string }>('http://localhost:8080/api/auth/token', { headers });
+    const headers = {Authorization: `Bearer ${this.getToken()}`};
+    return this.http.get<{ token: string }>('http://localhost:8080/api/auth/token', {headers});
   }
 
   /** ✅ Получение токена из URL */
@@ -84,5 +85,9 @@ export class AuthService {
     console.log('🔴 AuthService: Logging out user');
     localStorage.removeItem('authToken'); // ✅ Удаляем токен
     this.router.navigate(['/login']);
+  }
+
+  checkAuth(): Observable<boolean> {
+    return this.http.get<boolean>('http://localhost:8080/api/auth/check', {withCredentials: true});
   }
 }
