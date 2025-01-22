@@ -1,5 +1,6 @@
 package kontactNick.security.handler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,58 +20,62 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.Collections;
 
 @Component
 public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public CustomOAuth2SuccessHandler(@Lazy UserService userService, JwtTokenProvider jwtTokenProvider) {
+    public CustomOAuth2SuccessHandler(@Lazy UserService userService, JwtTokenProvider jwtTokenProvider, ObjectMapper objectMapper) {
         this.userService = userService;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+
+        System.out.println("🔄 CustomOAuth2SuccessHandler triggered!");
+
         if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
-            // Пользователь успешно вошел через Google
+            // ✅ Получаем данные пользователя из Google OAuth
             String email = oidcUser.getEmail();
             String nick = email;
             String avatarUrl = oidcUser.getPicture();
 
-            System.out.println("OAuth2 Login Successful: " + email);
+            System.out.println("✅ OAuth2 Login Successful: " + email);
 
-            // Сохраняем или обновляем пользователя в БД
+            // ✅ Сохраняем/обновляем пользователя в БД
             User user = userService.saveOrUpdateUser(email, nick, avatarUrl);
 
-            // Генерируем JWT
+            // ✅ Генерируем JWT
             String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
 
-            // Логируем токен
-            System.out.println("Generated JWT: " + jwt);
+            // ✅ Логируем токен (удобно для отладки)
+            System.out.println("🔑 Generated JWT: " + jwt);
 
-            // ✅ Редиректим с токеном в URL
-            response.sendRedirect("http://localhost:4200/dashboard?token=" + jwt);
+            // ✅ Сохраняем токен в сессии
+            HttpSession session = request.getSession();
+            session.setAttribute("jwt", jwt);
+            System.out.println("✅ JWT stored in session: " + session.getAttribute("jwt"));
+
+            // ✅ Редиректим на фронт c токеном в URL
+            String redirectUrl = "http://localhost:4200/dashboard";
+            System.out.println("✅ Redirecting to: " + redirectUrl);
+            String token = objectMapper.writeValueAsString(Collections.singletonMap("token", jwt));
+            response.getWriter().write(token);
+            response.sendRedirect(redirectUrl);
+
+        } else {
+            System.out.println("❌ Authentication principal is not OidcUser");
+            response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
         }
     }
 }
 
-
-// Устанавливаем JSON-ответ
-//            response.setContentType("application/json");
-//            response.getWriter().write("{\"token\":\"" + jwt + "\"}");
-//            response.getWriter().flush();
-
-// Делаем редирект на фронтенд, передавая токен в URL
-// System.out.println("Redirecting to frontend with token: " + jwt);
-// response.sendRedirect("http://localhost:4200/dashboard?token=" + jwt);
-
-// ✅ Сохраняем токен в HTTP-only Cookie (защищает от XSS)
-//Cookie jwtCookie = new Cookie("jwt", jwt);
-//            jwtCookie.setHttpOnly(true); // Делаем его недоступным для JS
-//            jwtCookie.setPath("/"); // Доступен для всего приложения
-//            jwtCookie.setMaxAge(60 * 60 * 24); // 1 день жизни
-//
-//            response.addCookie(jwtCookie);
+//  Совершаем редирект
+//   response.sendRedirect("http://localhost:4200/dashboard?token=" + jwt);

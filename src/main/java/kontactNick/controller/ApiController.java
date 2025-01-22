@@ -74,12 +74,6 @@ public class ApiController {
         return ResponseEntity.of(userRepository.findByEmail(email));
     }
 
-    //    // Страница входа (опционально, если нужна)
-//    @GetMapping("/login")
-//    public String login() {
-//        return "login"; // Отобразите страницу входа, если используете шаблоны
-//    }
-
     @PreAuthorize("hasAuthority('ROLE_USER')")
     @PostMapping("/categories")
     public ResponseEntity<Category> createCategory(@RequestBody CategoryDto categoryDto) {

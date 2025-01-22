@@ -23,11 +23,11 @@ export class AuthService {
 
   /** ✅ Сохранение токена */
   saveToken(token: string): void {
+    console.log('✅ AuthService: Saving token:', token);
     if (token) {
-      console.log('✅ AuthService: Saving token:', token);
       localStorage.setItem('authToken', token);
     } else {
-      console.warn('⚠️ AuthService: No token received, not saving.');
+      console.warn('⚠️ No token received, not saving.');
     }
   }
 
@@ -38,7 +38,17 @@ export class AuthService {
 
   /** ✅ Проверка авторизации */
   isLoggedIn(): boolean {
-    return !!this.getToken();
+    const token = this.getToken();
+    console.log('🔍 AuthService: Checking if user is logged in. Token:', token);
+    return !!token;
+  }
+
+  /** ✅ Получение токена при авторизации через Google от эндпойнта на бэкенде */
+  getGoogleToken(): Observable<any> {
+    console.log('🔍 AuthService: Requesting token from backend...');
+
+    const headers = { Authorization: `Bearer ${this.getToken()}` };
+    return this.http.get<{ token: string }>('http://localhost:8080/api/auth/token', { headers });
   }
 
   /** ✅ Получение токена из URL */
@@ -49,15 +59,19 @@ export class AuthService {
 
   /** ✅ Обработка входа через Google */
   handleGoogleLogin(): void {
-    const token = this.getTokenFromUrl();
-    if (token) {
-      console.log('✅ AuthService: Google token found in URL:', token);
-      this.saveToken(token);
-      this.clearQueryParams(); // ✅ Удаляем токен из URL после сохранения
-      this.router.navigate(['/dashboard']); // ✅ Перенаправляем, если токен найден
-    } else {
-      console.warn('⚠️ AuthService: No Google token found in URL.');
-    }
+    console.log('🔄 AuthService: Handling Google login...');
+
+    this.getGoogleToken().subscribe({
+      next: (response) => {
+        console.log('✅ AuthService: Google token received:', response.token);
+        this.saveToken(response.token);
+        this.router.navigate(['/dashboard']); // ✅ Перенаправляем, если токен найден
+      },
+      error: (err) => {
+        console.error('🚨 AuthService: Error fetching Google token:', err);
+        this.router.navigate(['/login']); // ❌ Если ошибка — отправляем на login
+      }
+    });
   }
 
   /** ✅ Очистка параметров URL */

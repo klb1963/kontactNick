@@ -12,6 +12,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -39,14 +40,15 @@ public class SecurityConfig {
                 .cors(withDefaults()) // Разрешаем CORS
                 .csrf().disable()
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/auth/register", "/api/auth/login").permitAll() // ✅ Открытые эндпоинты
+                        .requestMatchers("/", "/api/auth/register", "/api/auth/login", "/api/auth/token").permitAll() // ✅ Открытые эндпоинты
                         .requestMatchers("/api/oauth2/profile").authenticated() // ✅ Требует JWT
                         .requestMatchers("/api/categories").hasAuthority("ROLE_USER") // ✅ Требует роль
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // ✅ Отключаем сессии
-                .securityContext(securityContext -> securityContext.disable()) // ✅ Отключаем SecurityContext
-                .sessionManagement(session -> session.sessionFixation().none()) // ✅ Отключаем смену sessionId
+                .securityContext(securityContext -> securityContext.securityContextRepository(new HttpSessionSecurityContextRepository()))
+//                .securityContext(securityContext -> securityContext.disable()) // ✅ Отключаем SecurityContext
+//                .sessionManagement(session -> session.sessionFixation().none()) // ✅ Отключаем смену sessionId
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(customOAuth2SuccessHandler) // Обрабатываем успешный вход
                 )
