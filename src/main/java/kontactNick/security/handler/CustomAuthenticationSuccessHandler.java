@@ -7,48 +7,92 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
+import kontactNick.security.util.JwtTokenProvider;
+import kontactNick.service.TokenService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Optional;
 
+@Slf4j
 @Component
 @Transactional
 public class CustomAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final TokenService tokenService;
 
-    public CustomAuthenticationSuccessHandler(UserRepository userRepository) {
+    public CustomAuthenticationSuccessHandler(UserRepository userRepository, JwtTokenProvider jwtTokenProvider, TokenService tokenService) {
         this.userRepository = userRepository;
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.tokenService = tokenService;
     }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
-        String email = oidcUser.getEmail();
-        String username = oidcUser.getFullName();
+        log.info("✅ OAuth Login Success: {}", authentication.getName());
 
-        // Проверка, существует ли пользователь в базе
-        Optional<User> optionalUser = userRepository.findByEmail(email);
+        if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
+            String email = oidcUser.getEmail();
+            String nick = oidcUser.getFullName();
+            String avatarUrl = oidcUser.getPicture();
 
-        if (optionalUser.isEmpty()) {
-            // Создание нового пользователя
-            User newUser = new User();
-            newUser.setEmail(email);
-            newUser.setNick(email);
-            newUser.setRole(Roles.ROLE_USER); // Установите роль по умолчанию
+            log.info("🔍 OAuth User Info: email={}, nick={}, avatarUrl={}", email, nick, avatarUrl);
 
-            System.out.println("Saving user: " + newUser);
-            userRepository.save(newUser); // Сохраняем пользователя в базе
+            Optional<User> optionalUser = userRepository.findByEmail(email);
+
+            User user = optionalUser.orElseGet(() -> {
+                User newUser = new User();
+                newUser.setEmail(email);
+                newUser.setNick(nick);
+                newUser.setAvatarUrl(avatarUrl);
+                newUser.setRole(Roles.ROLE_USER);
+                log.info("🆕 New user registered: {}", email);
+                return userRepository.save(newUser);
+            });
+
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.info("🔐 SecurityContextHolder: Пользователь аутентифицирован -> {}", authentication.getName());
+            } else {
+                log.info("🔐 SecurityContextHolder уже содержит аутентификацию: {}", SecurityContextHolder.getContext().getAuthentication().getName());
+            }
+
+            // ✅ Генерация JWT токена
+            String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
+            log.info("🔑 Generated JWT: {}", jwt);
+
+            if (jwt == null || jwt.isEmpty()) {
+                log.error("❌ Ошибка: JWT не сгенерирован!");
+            } else {
+                // ✅ Устанавливаем JWT в Cookie правильно
+                ResponseCookie accessTokenCookie = ResponseCookie.from("jwt-token", jwt)
+                        .httpOnly(true)  // ✅ Защищаем Cookie от доступа через JavaScript
+                        .secure(false)   // ❌ Должно быть true для HTTPS (оставляем false для локальной отладки)
+                        .path("/")
+                        .maxAge(Duration.ofDays(1))
+                        .sameSite("None") // 🔴 ВАЖНО: Должно быть "None", если фронт и бэк на разных доменах!
+                        .build();
+
+                response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+                log.info("🍪 JWT сохранён в Cookie: {}", accessTokenCookie);
+            }
+
+            // ✅ Редирект на frontend
+            log.info("➡ Перенаправляем пользователя на /dashboard");
+            response.sendRedirect("http://localhost:4200/dashboard");
+        } else {
+            log.error("❌ Ошибка аутентификации: не OIDC пользователь");
+            response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
         }
-
-        // Перенаправление после успешной аутентификации
-        response.sendRedirect("/dashboard");
     }
 }
-
-
-

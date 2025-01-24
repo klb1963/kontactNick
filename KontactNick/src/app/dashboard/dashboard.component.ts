@@ -1,8 +1,8 @@
-import {Component, OnInit} from '@angular/core';
-import {ActivatedRoute, Router} from '@angular/router';
-import {AuthService} from '../auth.service';
-import {HttpErrorResponse} from '@angular/common/http';
-import {first} from 'rxjs';
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '../auth.service';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { first } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
@@ -13,68 +13,72 @@ import {first} from 'rxjs';
 export class DashboardComponent implements OnInit {
   constructor(
     private authService: AuthService,
-    private route: ActivatedRoute,  // ✅ Для получения параметров из URL
+    private http: HttpClient,
+    private route: ActivatedRoute,
     private router: Router
-  ) {
-  }
+  ) {}
 
   ngOnInit(): void {
     this.authService.checkAuth()
       .pipe(first())
       .subscribe({
+        next: () => {
+          console.log('✅ Auth check passed, fetching token...');
+          this.fetchToken();
+        },
         error: (err) => {
-          this.hadnleCheckAuthError(err)
+          this.handleCheckAuthError(err);
         }
       });
-    // console.log('🟢 DashboardComponent initialized');
-    // console.log('🔍 Current URL:', window.location.href);
-    //
-    // // ✅ Проверяем токен в localStorage перед загрузкой дашборда
-    // const storedToken = localStorage.getItem('authToken');
-    // console.log('📂 localStorage authToken (before dashboard):', storedToken);
-    //
-    // const urlParams = new URLSearchParams(window.location.search);
-    // const token = urlParams.get('token');
-    //
-    // console.log('🔍 Token from URL:', token);
-    //
-    // if (token) {
-    //   console.log('💾 Saving token:', token);
-    //   this.authService.saveToken(token);
-    //   this.clearQueryParams();
-    // } else {
-    //   console.warn('🚨 Dashboard: No token in URL, checking localStorage');
-    // }
-
-    // setTimeout(() => {
-    //   if (!this.authService.isLoggedIn()) {
-    //     console.warn('🚨 Dashboard: No valid token found, redirecting to login');
-    //     this.router.navigate(['/login']);
-    //   } else {
-    //     console.log('✅ Dashboard: User is authenticated');
-    //   }
-    // }, 500);
   }
 
-  // /** ✅ Получаем токен из URL */
-  // private getTokenFromUrl(): string | null {
-  //   return this.route.snapshot.queryParamMap.get('token');
-  // }
-  //
-  // /** ✅ Очищаем параметры в URL */
-  // private clearQueryParams(): void {
-  //   this.router.navigate([], {
-  //     queryParams: {},
-  //     queryParamsHandling: 'merge'
-  //   });
-  // }
+  private fetchToken(): void {
+    const jwtToken = this.getJwtToken(); // ✅ Получаем токен
+
+    if (!jwtToken) {
+      console.warn('❌ No JWT found, skipping /api/auth/token request');
+      return;
+    }
+
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${jwtToken}`);
+
+    this.http.get('/api/auth/token', { headers, withCredentials: true }).subscribe({
+      next: (data) => console.log('✅ Token received:', data),
+      error: (err) => console.error('❌ Error fetching token:', err)
+    });
+  }
 
   logout(): void {
     this.authService.logout();
   }
 
-  private hadnleCheckAuthError(err: HttpErrorResponse) {
+  private handleCheckAuthError(err: HttpErrorResponse) {
     console.warn('🚨 Dashboard: No valid token found, redirecting to login');
     this.router.navigate(['/login']);
+  }
+
+  private getJwtToken(): string | null {
+    // ✅ 1. Проверяем localStorage
+    let token = localStorage.getItem('jwt-token');
+
+    if (!token) {
+      // ✅ 2. Если нет в localStorage, ищем в Cookie
+      const cookieToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('jwt-token='));
+
+      if (cookieToken) {
+        token = cookieToken.split('=')[1];
+        console.log('🍪 JWT найден в Cookie:', token);
+      }
+    }
+
+    if (token) {
+      console.log('🔑 Используем JWT:', token);
+    } else {
+      console.warn('❌ JWT не найден ни в localStorage, ни в Cookie');
+    }
+
+    return token;
   }
 }

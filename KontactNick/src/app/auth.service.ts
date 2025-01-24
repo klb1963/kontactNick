@@ -49,7 +49,8 @@ export class AuthService {
     console.log('🔍 AuthService: Requesting token from backend...');
 
     const headers = {Authorization: `Bearer ${this.getToken()}`};
-    return this.http.get<{ token: string }>('http://localhost:8080/api/auth/token', {headers});
+    return this.http.get<{ token: string }>('http://localhost:8080/api/auth/token', {
+      withCredentials: true,}); // ✅ Должно быть true, чтобы Cookie отправлялись
   }
 
   /** ✅ Получение токена из URL */
