@@ -21,6 +21,7 @@ import java.util.Optional;
 @Slf4j
 public class UserService {
 
+    // DI
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -31,6 +32,7 @@ public class UserService {
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
+    // register new user
     public void register(UserDto userDto) {
         if (userRepository.existsByEmail(userDto.getEmail())) {
             throw new IllegalArgumentException("Email is already in use");
@@ -39,59 +41,54 @@ public class UserService {
         User user = new User();
         user.setEmail(userDto.getEmail());
         user.setNick(userDto.getEmail());
-        user.setRole(Roles.ROLE_USER);
+        user.setRole(Roles.ROLE_USER);  // ✅ Устанавливаем корректную роль
         user.setPassword(passwordEncoder.encode(userDto.getPassword()));
 
         userRepository.save(user);
+        log.info("✅ User registered successfully: {}", user.getEmail());
     }
 
+    // user authentication
     public String authenticate(String email, String password) {
-        // Находим пользователя по email
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
-                    log.error("Authentication failed: Email not found: {}", email);
+                    log.error("❌ Authentication failed: Email not found: {}", email);
                     return new BadCredentialsException("Invalid email or password");
                 });
 
-        // Проверяем пароль
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            log.error("Authentication failed: Password mismatch for user: {}", email);
-            return null; // Вместо выбрасывания ошибки, возвращаем null
+            log.error("❌ Authentication failed: Password mismatch for user: {}", email);
+            throw new BadCredentialsException("Invalid email or password");  // ✅ Исправлено
         }
 
-        // Генерируем и возвращаем токен
         String token = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
-
-        log.info("User authenticated successfully: {}", email);
+        log.info("✅ User authenticated successfully: {}", email);
         return token;
     }
 
-    /**
-     * ✅ Метод для сохранения или обновления пользователя при входе через Google OAuth2
-     */
+    // save or update user
     @Transactional
     public User saveOrUpdateUser(String email, String nick, String avatarUrl) {
+
         Optional<User> optionalUser = userRepository.findByEmail(email);
 
         if (optionalUser.isPresent()) {
-            // 🔹 Обновляем существующего пользователя
             User user = optionalUser.get();
             user.setNick(nick);
             user.setAvatarUrl(avatarUrl);
 
-            // ✅ Убедимся, что в БД нет дублирования "ROLE_ROLE_USER"
-            if (user.getRole().name().startsWith("ROLE_ROLE_")) {
-                user.setRole(Roles.ROLE_USER); // Исправляем дублированное значение
+            // ✅ Убеждаемся, что роль корректная
+            if (user.getRole() == null) {
+                user.setRole(Roles.ROLE_USER);
             }
 
             return userRepository.save(user);
         } else {
-            // 🔹 Создаем нового пользователя
             User newUser = new User();
             newUser.setEmail(email);
             newUser.setNick(nick);
             newUser.setAvatarUrl(avatarUrl);
-            newUser.setRole(Roles.ROLE_USER); // ✅ Явно устанавливаем корректное значение
+            newUser.setRole(Roles.ROLE_USER);
 
             return userRepository.save(newUser);
         }
