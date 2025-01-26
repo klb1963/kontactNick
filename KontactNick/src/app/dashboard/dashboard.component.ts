@@ -3,14 +3,18 @@ import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { first } from 'rxjs';
+import { CommonModule } from '@angular/common'; // ✅ Добавляем CommonModule
 
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
-  standalone: true
+  standalone: true,
+  imports: [CommonModule] // ✅ Добавляем в imports
 })
 export class DashboardComponent implements OnInit {
+  categories: any[] = []; // ✅ Массив для хранения категорий
+
   constructor(
     private authService: AuthService,
     private http: HttpClient,
@@ -24,8 +28,8 @@ export class DashboardComponent implements OnInit {
       .subscribe({
         next: (isAuthenticated: boolean) => {
           if (isAuthenticated) {
-            console.log('✅ User is authenticated, fetching token...');
-            this.fetchToken();
+            console.log('✅ User is authenticated, loading categories...');
+            this.loadCategories();
           } else {
             console.warn('❌ User is NOT authenticated, redirecting to login');
             this.router.navigate(['/login']);
@@ -38,20 +42,23 @@ export class DashboardComponent implements OnInit {
       });
   }
 
-  private fetchToken(): void {
+  private loadCategories(): void {
     const jwtToken = this.authService.getToken();
-
     if (!jwtToken) {
-      console.warn('❌ No JWT found, skipping /api/auth/token request');
+      console.warn('❌ No JWT found, skipping category request');
       return;
     }
 
     const headers = new HttpHeaders().set('Authorization', `Bearer ${jwtToken}`);
 
-    this.http.get('/api/auth/token', { headers, withCredentials: true }).subscribe({
-      next: (data) => console.log('✅ Token received:', data),
-      error: (err: any) => console.error('❌ Error fetching token:', err)
-    });
+    this.http.get<any[]>('http://localhost:8080/api/categories/my', { headers, withCredentials: true })
+      .subscribe({
+        next: (data) => {
+          console.log('✅ Categories received:', data);
+          this.categories = data;
+        },
+        error: (err: any) => console.error('❌ Error fetching categories:', err)
+      });
   }
 
   logout(): void {

@@ -1,3 +1,20 @@
-<p>dashboard works!</p>
+<h2>📋 Мои категории</h2>
 
-<button mat-raised-button color="warn" (click)="logout()">Выйти</button>
+<ul *ngIf="categories.length > 0; else noCategories">
+  <li *ngFor="let category of categories">
+    <h3>{{ category.name }}</h3>
+    <p>{{ category.description }}</p>
+
+    <ul *ngIf="category.fields.length > 0">
+      <li *ngFor="let field of category.fields">
+        🔹 {{ field.name }} ({{ field.fieldType }})
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<ng-template #noCategories>
+  <p>🚫 У вас пока нет категорий.</p>
+</ng-template>
+
+<button (click)="logout()">🔴 Выйти</button>

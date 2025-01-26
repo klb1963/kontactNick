@@ -1,6 +1,7 @@
 package kontactNick.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,5 +34,6 @@ public class Category {
     private User user; // владелец категории
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)  // ✅ Оптимизированная загрузка полей
+    @JsonManagedReference
     private List<Field> fields = new ArrayList<>();
 }
