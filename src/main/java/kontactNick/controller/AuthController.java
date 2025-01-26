@@ -1,10 +1,12 @@
 package kontactNick.controller;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import kontactNick.dto.LoginDto;
 import kontactNick.dto.UserDto;
 import kontactNick.entity.User;
+import kontactNick.repository.UserRepository;
 import kontactNick.security.util.JwtTokenProvider;
 import kontactNick.service.TokenService;
 import kontactNick.service.UserService;
@@ -15,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
@@ -23,17 +26,20 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private final UserRepository userRepository;
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenService tokenService;
 
-    public AuthController(UserService userService, JwtTokenProvider jwtTokenProvider, TokenService tokenService) {
+    public AuthController(UserRepository userRepository, UserService userService, JwtTokenProvider jwtTokenProvider, TokenService tokenService) {
+        this.userRepository = userRepository;
         this.userService = userService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.tokenService = tokenService;
@@ -76,17 +82,39 @@ public class AuthController {
      * Получение JWT-токена из Cookies
      */
     @GetMapping("/token")
-    public ResponseEntity<Map<String, String>> getAuthToken(@CookieValue(name = "jwt-token", required = false) String token) {
-        log.info("🔍 Запрос на /api/auth/token получен");
-
-        if (!StringUtils.hasText(token)) {
-            log.warn("❌ JWT не найден в Cookies.");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User is not authenticated"));
+    public ResponseEntity<?> getToken(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            log.warn("❌ Unauthorized access to /api/auth/token");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
 
-        log.info("✅ JWT найден в Cookies: {}", token);
-        return ResponseEntity.ok(Map.of("token", token));
+        log.info("✅ Token requested by: {}", authentication.getName());
+
+        // Получаем email пользователя
+        String email;
+        if (authentication.getPrincipal() instanceof UserDetails userDetails) {
+            email = userDetails.getUsername(); // Spring хранит email в username
+        } else {
+            log.error("❌ Ошибка: Неподдержуемый тип Principal");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Unexpected principal type");
+        }
+
+        log.info("🔍 User email from authentication: {}", email);
+
+        // Найти пользователя в базе
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+        if (optionalUser.isEmpty()) {
+            log.warn("❌ Пользователь {} не найден в базе", email);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
+
+        User user = optionalUser.get();
+        String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
+
+        log.info("🔑 Generated token for {}: {}", user.getEmail(), jwt);
+        return ResponseEntity.ok(jwt);
     }
+
 
     /**
      * Проверка аутентификации пользователя
@@ -124,4 +152,16 @@ public class AuthController {
                 "role", user.getRole()
         ));
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        Cookie cookie = new Cookie("jwt-token", "");
+        cookie.setPath("/");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setMaxAge(0);  // Удаляем куку
+        response.addCookie(cookie);
+        return ResponseEntity.ok().body("Logged out successfully");
+    }
+
 }

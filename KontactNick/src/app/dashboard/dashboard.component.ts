@@ -19,21 +19,27 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    console.log('🔍 DashboardComponent initialized, checking authentication...');
     this.authService.checkAuth()
       .pipe(first())
       .subscribe({
-        next: () => {
-          console.log('✅ Auth check passed, fetching token...');
-          this.fetchToken();
+        next: (isAuthenticated: boolean) => {
+          if (isAuthenticated) {
+            console.log('✅ User is authenticated, fetching token...');
+            this.fetchToken();
+          } else {
+            console.warn('❌ User is NOT authenticated, redirecting to login');
+            this.router.navigate(['/login']);
+          }
         },
-        error: (err) => {
+        error: (err: any) => {
           this.handleCheckAuthError(err);
         }
       });
   }
 
   private fetchToken(): void {
-    const jwtToken = this.getJwtToken(); // ✅ Получаем токен
+    const jwtToken = this.getJwtToken();
 
     if (!jwtToken) {
       console.warn('❌ No JWT found, skipping /api/auth/token request');
@@ -44,39 +50,27 @@ export class DashboardComponent implements OnInit {
 
     this.http.get('/api/auth/token', { headers, withCredentials: true }).subscribe({
       next: (data) => console.log('✅ Token received:', data),
-      error: (err) => console.error('❌ Error fetching token:', err)
+      error: (err: any) => console.error('❌ Error fetching token:', err)
     });
   }
 
   logout(): void {
+    console.log('🔴 Logging out...');
     this.authService.logout();
   }
 
-  private handleCheckAuthError(err: HttpErrorResponse) {
+  private handleCheckAuthError(err: any) {
     console.warn('🚨 Dashboard: No valid token found, redirecting to login');
     this.router.navigate(['/login']);
   }
 
   private getJwtToken(): string | null {
-    // ✅ 1. Проверяем localStorage
-    let token = localStorage.getItem('jwt-token');
+    let token = this.authService.getToken(); // ✅ Используем метод из AuthService
 
     if (!token) {
-      // ✅ 2. Если нет в localStorage, ищем в Cookie
-      const cookieToken = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('jwt-token='));
-
-      if (cookieToken) {
-        token = cookieToken.split('=')[1];
-        console.log('🍪 JWT найден в Cookie:', token);
-      }
-    }
-
-    if (token) {
-      console.log('🔑 Используем JWT:', token);
-    } else {
       console.warn('❌ JWT не найден ни в localStorage, ни в Cookie');
+    } else {
+      console.log('🔑 Используем JWT:', token);
     }
 
     return token;

@@ -60,7 +60,8 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                 return userRepository.save(newUser);
             });
 
-            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            // ✅ Обновляем SecurityContext
+            if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 log.info("🔐 SecurityContextHolder: Пользователь аутентифицирован -> {}", authentication.getName());
             } else {
@@ -74,22 +75,26 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             if (jwt == null || jwt.isEmpty()) {
                 log.error("❌ Ошибка: JWT не сгенерирован!");
             } else {
-                // ✅ Устанавливаем JWT в Cookie правильно
+                // ✅ Устанавливаем JWT в Cookie
+                boolean isSecure = request.isSecure();  // Проверяем, HTTPS или HTTP
+
                 ResponseCookie accessTokenCookie = ResponseCookie.from("jwt-token", jwt)
-                        .httpOnly(true)  // ✅ Защищаем Cookie от доступа через JavaScript
-                        .secure(false)   // ❌ Должно быть true для HTTPS (оставляем false для локальной отладки)
+                        .httpOnly(true)  // ✅ Защищаем Cookie от JavaScript
+                        .secure(isSecure) // ✅ Динамическое определение (HTTPS → true, HTTP → false)
                         .path("/")
                         .maxAge(Duration.ofDays(1))
-                        .sameSite("None") // 🔴 ВАЖНО: Должно быть "None", если фронт и бэк на разных доменах!
+                        .sameSite(isSecure ? "None" : "Lax")  // ❗ Для кросс-доменных запросов нужен `None`
                         .build();
 
                 response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
                 log.info("🍪 JWT сохранён в Cookie: {}", accessTokenCookie);
             }
 
-            // ✅ Редирект на frontend
-            log.info("➡ Перенаправляем пользователя на /dashboard");
-            response.sendRedirect("http://localhost:4200/dashboard");
+            // ✅ Перенаправление пользователя после логина
+            String redirectUrl = "http://localhost:4200/dashboard";  // ✅ Можно вынести в env
+            log.info("➡ Перенаправляем пользователя на {}", redirectUrl);
+            response.sendRedirect(redirectUrl);
+
         } else {
             log.error("❌ Ошибка аутентификации: не OIDC пользователь");
             response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
