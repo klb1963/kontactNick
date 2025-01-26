@@ -1,5 +1,6 @@
 package kontactNick.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import kontactNick.entity.Category;
 import lombok.*;
@@ -32,5 +33,6 @@ public class Field {
 
     @ManyToOne(fetch = FetchType.LAZY) // ✅ Оптимизированная загрузка
     @JoinColumn(name = "category_id", nullable = false)
+    @JsonBackReference
     private Category category; // Категория, к которой относится поле
 }
