@@ -32,28 +32,15 @@ export class UserRegistrationComponent {
 
   register(): void {
     if (this.password !== this.confirmPassword) {
+      console.warn('❌ Ошибка: пароли не совпадают!');
       this.errorMessage = '⚠️ Пароли не совпадают!';
       return;
     }
 
     this.authService.register(this.email, this.password).pipe(first()).subscribe({
       next: () => {
-        console.log('✅ Регистрация успешна, проверяем авторизацию...');
-        this.authService.checkAuth().pipe(first()).subscribe({
-          next: (isAuthenticated: boolean) => {
-            if (isAuthenticated) {
-              console.log('✅ Пользователь зарегистрирован и аутентифицирован, переходим на Dashboard');
-              this.router.navigate(['/dashboard']);
-            } else {
-              console.warn('❌ Регистрация прошла, но токен не найден. Проверь сервер.');
-              this.router.navigate(['/login']);
-            }
-          },
-          error: (err) => {
-            console.error('🚨 Ошибка после регистрации:', err);
-            this.errorMessage = '❌ Ошибка входа после регистрации.';
-          }
-        });
+        console.log('✅ Регистрация успешна, перенаправляем на Dashboard');
+        this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         console.error('🚨 Ошибка регистрации:', err);
@@ -62,7 +49,7 @@ export class UserRegistrationComponent {
     });
   }
 
-  // ✅ Метод для регистрации через Google
+  // ✅ Регистрация через Google
   registerWithGoogle(): void {
     console.log('🔵 Redirecting to Google registration...');
     window.location.href = 'http://localhost:8080/oauth2/authorization/google';

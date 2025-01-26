@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { first } from 'rxjs';
 
 @Component({
@@ -14,7 +14,6 @@ export class DashboardComponent implements OnInit {
   constructor(
     private authService: AuthService,
     private http: HttpClient,
-    private route: ActivatedRoute,
     private router: Router
   ) {}
 
@@ -32,14 +31,15 @@ export class DashboardComponent implements OnInit {
             this.router.navigate(['/login']);
           }
         },
-        error: (err: any) => {
-          this.handleCheckAuthError(err);
+        error: () => {
+          console.warn('🚨 Authentication check failed, redirecting to login');
+          this.router.navigate(['/login']);
         }
       });
   }
 
   private fetchToken(): void {
-    const jwtToken = this.getJwtToken();
+    const jwtToken = this.authService.getToken();
 
     if (!jwtToken) {
       console.warn('❌ No JWT found, skipping /api/auth/token request');
@@ -57,22 +57,5 @@ export class DashboardComponent implements OnInit {
   logout(): void {
     console.log('🔴 Logging out...');
     this.authService.logout();
-  }
-
-  private handleCheckAuthError(err: any) {
-    console.warn('🚨 Dashboard: No valid token found, redirecting to login');
-    this.router.navigate(['/login']);
-  }
-
-  private getJwtToken(): string | null {
-    let token = this.authService.getToken(); // ✅ Используем метод из AuthService
-
-    if (!token) {
-      console.warn('❌ JWT не найден ни в localStorage, ни в Cookie');
-    } else {
-      console.log('🔑 Используем JWT:', token);
-    }
-
-    return token;
   }
 }

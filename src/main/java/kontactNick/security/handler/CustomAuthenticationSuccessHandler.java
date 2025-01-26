@@ -43,8 +43,11 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
 
         if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
             String email = oidcUser.getEmail();
-            String nick = oidcUser.getFullName();
+            String fullName = oidcUser.getFullName();
             String avatarUrl = oidcUser.getPicture();
+
+            // ⚠️ Если `fullName` пустой, используем email как `nick`
+            String nick = (fullName != null && !fullName.isEmpty()) ? fullName : email;
 
             log.info("🔍 OAuth User Info: email={}, nick={}, avatarUrl={}", email, nick, avatarUrl);
 
