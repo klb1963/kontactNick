@@ -31,31 +31,22 @@ export class LoginComponent implements OnInit {
   constructor(
     private authService: AuthService,
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: Object // ✅ Проверяем, браузер или сервер
+    @Inject(PLATFORM_ID) private platformId: Object
   ) {}
 
   ngOnInit(): void {
     console.log('🟢 LoginComponent initialized');
 
-    // ✅ Проверяем, выполняется ли код в браузере (избегаем SSR-ошибки)
     if (isPlatformBrowser(this.platformId)) {
-      setTimeout(() => {
-        this.authService.checkAuth().pipe(first()).subscribe({
-          next: (isAuthenticated: boolean) => {
-            if (isAuthenticated) {
-              console.log('🍪 Token найден, редирект на Dashboard');
-              this.router.navigate(['/dashboard']);
-            } else {
-              console.warn('🚨 Нет токена, ждем входа пользователя');
-            }
-          },
-          error: (err) => {
-            console.warn('❌ Ошибка проверки авторизации:', err);
+      this.authService.checkAuth().pipe(first()).subscribe({
+        next: (isAuthenticated: boolean) => {
+          if (isAuthenticated) {
+            console.log('🍪 Token найден, редирект на Dashboard');
+            this.router.navigate(['/dashboard']);
           }
-        });
-      }, 100); // 🔴 Даем время загрузиться после SSR
-    } else {
-      console.warn("❌ Код выполняется в SSR (на сервере), Cookies недоступны.");
+        },
+        error: (err) => console.warn('❌ Ошибка проверки авторизации:', err),
+      });
     }
   }
 
@@ -72,20 +63,8 @@ export class LoginComponent implements OnInit {
 
     this.authService.login(this.email, this.password).pipe(first()).subscribe({
       next: () => {
-        console.log('✅ Login successful, checking authentication...');
-        this.authService.checkAuth().pipe(first()).subscribe({
-          next: (isAuthenticated: boolean) => {
-            if (isAuthenticated) {
-              console.log('✅ Пользователь аутентифицирован, переходим на Dashboard');
-              this.router.navigate(['/dashboard']);
-            } else {
-              console.warn('❌ Вход выполнен, но токен не найден. Проверь сервер.');
-            }
-          },
-          error: (err) => {
-            console.error('🚨 Ошибка после логина:', err);
-          }
-        });
+        console.log('✅ Login successful, redirecting...');
+        this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         console.error('🚨 Login error:', err);
