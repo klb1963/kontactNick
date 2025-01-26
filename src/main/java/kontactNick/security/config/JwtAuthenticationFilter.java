@@ -33,25 +33,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.tokenService = tokenService;
     }
 
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws IOException, ServletException {
 
+        log.info("🔍 JwtAuthenticationFilter: Incoming request -> {} {}", request.getMethod(), request.getRequestURI());
+
         String token = null;
         if (request.getCookies() != null) {
+            log.debug("🍪 JwtAuthenticationFilter: Checking cookies for JWT token...");
             token = tokenService.getCookieValueByName(request);
         }
 
         if (token == null) {
-            log.debug("JwtAuthenticationFilter: No valid Authorization header found");
+            log.warn("❌ JwtAuthenticationFilter: No valid JWT token found in cookies.");
             filterChain.doFilter(request, response);
             return;
         }
 
-        log.debug("JwtAuthenticationFilter: Filtering request: {} {}", request.getMethod(), request.getRequestURI());
-        log.debug("JwtAuthenticationFilter: Extracted token: {}", token);
+        log.info("✅ JwtAuthenticationFilter: Extracted JWT token: {}", token);
 
         try {
+            log.debug("🔑 JwtAuthenticationFilter: Parsing JWT token...");
             Claims claims = Jwts.parserBuilder()
                     .setSigningKey(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
                     .build()
@@ -61,16 +65,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String email = claims.getSubject();
             String role = claims.get("role", String.class);
 
-            log.debug("JwtAuthenticationFilter: Token parsed. Email: {}, Role: {}", email, role);
+            log.info("✅ JwtAuthenticationFilter: Token successfully parsed. Email: {}, Role: {}", email, role);
 
-            // Добавляем роль по умолчанию, если не найдено
             if (role == null) {
                 role = "ROLE_USER";
-                log.warn("JwtAuthenticationFilter: Role is missing in token. Setting default ROLE_USER.");
+                log.warn("⚠️ JwtAuthenticationFilter: Role is missing in token. Assigning default ROLE_USER.");
             }
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                log.debug("JwtAuthenticationFilter: Setting authentication in SecurityContextHolder");
+                log.debug("🔐 JwtAuthenticationFilter: Setting authentication in SecurityContextHolder...");
 
                 // Создаем UserDetails
                 UserDetails userDetails = new org.springframework.security.core.userdetails.User(
@@ -81,15 +84,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                log.info("✅ JwtAuthenticationFilter: SecurityContextHolder updated for user: {}", email);
+            } else {
+                log.debug("🔄 JwtAuthenticationFilter: SecurityContextHolder already contains authentication: {}",
+                        SecurityContextHolder.getContext().getAuthentication().getName());
             }
 
         } catch (Exception e) {
-            log.error("JwtAuthenticationFilter: Token validation failed: {}", e.getMessage());
+            log.error("❌ JwtAuthenticationFilter: Token validation failed: {}", e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("Invalid or expired token");
             return;
         }
-
 
         filterChain.doFilter(request, response);
     }

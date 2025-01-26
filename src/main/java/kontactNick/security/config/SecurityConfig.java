@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .cors(withDefaults()) // ✅ Разрешаем CORS
                 .csrf().disable() // ✅ Отключаем CSRF (не нужен для API)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/auth/register", "/api/auth/login").permitAll() // ✅ Открытые эндпоинты
+                        .requestMatchers("/", "/home", "/api/**").permitAll() // ✅ Открытые эндпоинты
                         .requestMatchers("/api/oauth2/profile").authenticated() // ✅ Требует аутентификации
                         .requestMatchers("/api/categories").hasAuthority("ROLE_USER") // ✅ Требует роль
                         .requestMatchers("/api/auth/token").authenticated() // ✅ Теперь /token требует аутентификации
