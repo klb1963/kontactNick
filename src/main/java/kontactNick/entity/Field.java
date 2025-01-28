@@ -2,7 +2,6 @@ package kontactNick.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import kontactNick.entity.Category;
 import lombok.*;
 
 @Getter

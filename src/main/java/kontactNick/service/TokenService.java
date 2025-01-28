@@ -10,7 +10,6 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.WebUtils;
-
 import java.time.Duration;
 
 @Slf4j
