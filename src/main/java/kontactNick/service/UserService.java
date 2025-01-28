@@ -61,7 +61,7 @@ public class UserService {
             throw new BadCredentialsException("Invalid email or password");  // ✅ Исправлено
         }
 
-        String token = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
+        String token = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
         log.info("✅ User authenticated successfully: {}", email);
         return token;
     }

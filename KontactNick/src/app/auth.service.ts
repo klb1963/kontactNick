@@ -2,8 +2,8 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, of } from 'rxjs';
-import { tap, catchError, map } from 'rxjs/operators'; // ✅ Добавлен map
+import { catchError, Observable, of } from 'rxjs';
+import { map, tap, switchMap } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
@@ -14,7 +14,7 @@ export class AuthService {
   constructor(
     private http: HttpClient,
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: object // Проверка среды (SSR/Browser)
+    @Inject(PLATFORM_ID) private platformId: object
   ) {}
 
   /** ✅ Проверяем, выполняется ли код в браузере */
@@ -22,30 +22,34 @@ export class AuthService {
     return isPlatformBrowser(this.platformId);
   }
 
-  /** ✅ Сохранение токена в Cookie */
-  public saveToken(token: string): void {
-    if (this.isBrowser()) {
-      document.cookie = `jwt-token=${token}; path=/; Secure; HttpOnly; SameSite=None`;
-      console.log('🍪 Token saved in cookie');
-    } else {
-      console.warn('⚠️ Cannot use document.cookie in SSR mode.');
-    }
-  }
-
-  /** ✅ Получение токена из Cookie */
-  public getToken(): string | null {
-    if (this.isBrowser()) {
-      const match = document.cookie.match(/jwt-token=([^;]+)/);
-      return match ? match[1] : null;
-    } else {
-      console.warn('⚠️ Cookies are not available in SSR mode.');
-      return null;
-    }
+  /** ✅ Получение токена с сервера (если HttpOnly) */
+  public getTokenFromServer(): Observable<string | null> {
+    console.log('📡 Sending GET request to /api/auth/token...');
+    return this.http.get<{ token?: string }>(`${this.baseUrl}/token`, {
+      withCredentials: true
+    }).pipe(
+      tap(response => console.log("🔑 Raw response from server:", response)), // 🔥 Логируем реальный ответ
+      map(response => {
+        if (!response || !response.token) {
+          console.warn("❌ No token found in response");
+          return null;
+        }
+        return response.token;
+      }),
+      tap(token => console.log("🔑 Extracted Token:", token)),
+      catchError(error => {
+        console.error("🚨 Error fetching token from server:", error);
+        return of(null);
+      })
+    );
   }
 
   /** ✅ Проверка авторизации */
-  public isLoggedIn(): boolean {
-    return !!this.getToken();
+  public isLoggedIn(): Observable<boolean> {
+    return this.getTokenFromServer().pipe(
+      map(token => !!token),
+      catchError(() => of(false))
+    );
   }
 
   /** ✅ Метод регистрации */
@@ -55,8 +59,7 @@ export class AuthService {
       { email, password },
       { withCredentials: true }
     ).pipe(
-      tap(response => this.saveToken(response.token)),
-      map(() => true),
+      switchMap(() => this.isLoggedIn()),
       catchError(error => {
         console.error('🚨 Registration error:', error);
         return of(false);
@@ -64,15 +67,15 @@ export class AuthService {
     );
   }
 
-  /** ✅ Метод логина */
+  /** ✅ Логин */
   public login(email: string, password: string): Observable<boolean> {
     return this.http.post<{ token: string }>(
       `${this.baseUrl}/login`,
       { email, password },
       { withCredentials: true }
     ).pipe(
-      tap(response => this.saveToken(response.token)),
-      map(() => true), // ✅ Преобразуем в `boolean`, исправляя ошибку типов
+      tap(() => console.log('✅ Login successful, token should be in cookies.')),
+      switchMap(() => this.isLoggedIn()),
       catchError(error => {
         console.error('🚨 Login error:', error);
         return of(false);
@@ -80,19 +83,15 @@ export class AuthService {
     );
   }
 
-  /** ✅ Логаут (очищаем куки) */
+  /** ✅ Логаут */
   public logout(): void {
     if (this.isBrowser()) {
-      console.log('🔴 AuthService: Logging out user');
-
-      this.http.post('http://localhost:8080/api/auth/logout', {}, { withCredentials: true, responseType: 'text' })
+      console.log('🔴 Logging out user');
+      this.http.post(`${this.baseUrl}/logout`, {}, { withCredentials: true, responseType: 'text' })
         .subscribe({
           next: () => {
             console.log('✅ Logged out successfully');
-            document.cookie = 'jwt-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; Secure; SameSite=None';
-            this.router.navigate(['/login']).then(() => {
-              window.location.reload();
-            });
+            this.router.navigate(['/login']).then(() => window.location.reload());
           },
           error: (err) => console.error('🚨 Logout error:', err)
         });
@@ -101,7 +100,12 @@ export class AuthService {
 
   /** ✅ Проверка аутентификации */
   public checkAuth(): Observable<boolean> {
-    return this.http.get<boolean>(`${this.baseUrl}/check`, { withCredentials: true }).pipe(
+    return this.http.get<{ authenticated?: boolean }>(
+      `${this.baseUrl}/check`,
+      { withCredentials: true }
+    ).pipe(
+      tap(response => console.log('🔍 Auth check response:', response)),
+      map(response => !!response.authenticated),
       catchError(error => {
         console.error('🚨 Auth check failed:', error);
         return of(false);
@@ -109,13 +113,21 @@ export class AuthService {
     );
   }
 
-  /** ✅ Получение категорий пользователя */
+  /** ✅ Получение категорий пользователя (с проверкой токена) */
   public getUserCategories(): Observable<any[]> {
-    return this.http.get<any[]>('http://localhost:8080/api/categories/my', { withCredentials: true }).pipe(
-      tap(categories => console.log('📂 Categories received:', categories)),
-      catchError(error => {
-        console.error('🚨 Error fetching categories:', error);
-        return of([]);
+    return this.getTokenFromServer().pipe(
+      switchMap(token => {
+        if (!token) {
+          console.warn('❌ No JWT found, skipping category request');
+          return of([]);
+        }
+        return this.http.get<any[]>(`${this.baseUrl}/categories/my`, { withCredentials: true }).pipe(
+          tap(categories => console.log('📂 Categories received:', categories)),
+          catchError(error => {
+            console.error('🚨 Error fetching categories:', error);
+            return of([]);
+          })
+        );
       })
     );
   }

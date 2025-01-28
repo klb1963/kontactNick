@@ -72,7 +72,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             }
 
             // ✅ Генерация JWT токена
-            String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
+            String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
             log.info("🔑 Generated JWT: {}", jwt);
 
             if (jwt == null || jwt.isEmpty()) {
