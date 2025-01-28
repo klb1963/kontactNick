@@ -1,6 +1,7 @@
 package kontactNick.controller;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import kontactNick.dto.LoginDto;
@@ -23,6 +24,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +32,7 @@ import java.util.Optional;
 
 @Slf4j
 @RestController
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 @RequestMapping("/api/auth")
 public class AuthController {
 
@@ -60,61 +63,58 @@ public class AuthController {
      * Аутентификация пользователя и выдача JWT
      */
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginDto loginDto, HttpServletResponse response) {
+    public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginDto loginDto,
+                                                     HttpServletRequest request,
+                                                     HttpServletResponse response) {
         log.debug("🔑 Login request received: email={}", loginDto.getEmail());
 
-        String token = userService.authenticate(loginDto.getEmail(), loginDto.getPassword());
+        // Извлекаем токен из cookies
+        String existingToken = tokenService.extractTokenFromCookies(request);
 
-        if (!StringUtils.hasText(token)) {
+        // Проверяем, действителен ли он
+        if (StringUtils.hasText(existingToken) && tokenService.validateToken(existingToken)) {
+            log.info("✅ Valid token already exists for {}. Returning existing token.", loginDto.getEmail());
+            return ResponseEntity.ok(Map.of("message", "Already logged in", "token", existingToken));
+        }
+
+        // Аутентификация пользователя
+        String newToken = userService.authenticate(loginDto.getEmail(), loginDto.getPassword());
+
+        if (!StringUtils.hasText(newToken)) {
             log.warn("❌ Invalid login attempt: {}", loginDto.getEmail());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Collections.singletonMap("error", "Invalid email or password"));
         }
 
-        ResponseCookie accessTokenCookie = tokenService.generateCookie(token);
+        // Создаём и добавляем JWT в HttpOnly Cookie
+        ResponseCookie accessTokenCookie = tokenService.generateCookie(newToken);
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
 
-        log.info("✅ Login successful, token issued for {}", loginDto.getEmail());
-        return ResponseEntity.ok(Map.of("token", token));
+        log.info("✅ Login successful, new token issued for {}", loginDto.getEmail());
+        return ResponseEntity.ok(Map.of("token", newToken));
     }
 
     /**
      * Получение JWT-токена из Cookies
      */
     @GetMapping("/token")
-    public ResponseEntity<?> getToken(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            log.warn("❌ Unauthorized access to /api/auth/token");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+    @CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
+    public ResponseEntity<?> getToken(HttpServletRequest request) {
+        // Получаем куку с токеном
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt-token".equals(cookie.getName())) {
+                    String jwt = cookie.getValue();
+                    log.info("✅ Retrieved token from cookie for user: {}", jwtTokenProvider.getUsernameFromToken(jwt));
+                    return ResponseEntity.ok(Map.of("token", jwt));
+                }
+            }
         }
 
-        log.info("✅ Token requested by: {}", authentication.getName());
-
-        // Получаем email пользователя
-        String email;
-        if (authentication.getPrincipal() instanceof UserDetails userDetails) {
-            email = userDetails.getUsername(); // Spring хранит email в username
-        } else {
-            log.error("❌ Ошибка: Неподдержуемый тип Principal");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Unexpected principal type");
-        }
-
-        log.info("🔍 User email from authentication: {}", email);
-
-        // Найти пользователя в базе
-        Optional<User> optionalUser = userRepository.findByEmail(email);
-        if (optionalUser.isEmpty()) {
-            log.warn("❌ Пользователь {} не найден в базе", email);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-        }
-
-        User user = optionalUser.get();
-        String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole());
-
-        log.info("🔑 Generated token for {}: {}", user.getEmail(), jwt);
-        return ResponseEntity.ok(jwt);
+        log.warn("❌ Token not found in cookies");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token not found"));
     }
-
 
     /**
      * Проверка аутентификации пользователя

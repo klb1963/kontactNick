@@ -13,13 +13,10 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class CategoryService {
+
     private final CategoryRepository categoryRepository;
-    private final UserRepository userRepository;
 
-    public List<Category> getCategoriesByUserEmail(String email) {
-        User user = userRepository.findByEmail(email).orElseThrow(() ->
-                new UsernameNotFoundException("User not found with email: " + email));
-
-        return categoryRepository.findByUser(user);
+        public List<Category> getCategoriesByUserEmail(String email) {
+            return categoryRepository.findByUser_Email(email);
     }
 }

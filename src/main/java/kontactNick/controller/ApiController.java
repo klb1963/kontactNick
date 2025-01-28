@@ -115,7 +115,7 @@ public class ApiController {
         String email = authentication.getName(); // Получаем email из токена
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Category> categories = categoryRepository.findByUser(user);
+        List<Category> categories = categoryRepository.findByUser_Email(email);
         return ResponseEntity.ok(categories);
     }
 

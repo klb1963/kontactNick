@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import kontactNick.security.util.JwtTokenProvider;
 import kontactNick.service.TokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,13 +27,15 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
+    private final JwtTokenProvider jwtTokenProvider;
+
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    public JwtAuthenticationFilter(TokenService tokenService) {
+    public JwtAuthenticationFilter(TokenService tokenService, JwtTokenProvider jwtTokenProvider) {
         this.tokenService = tokenService;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
-
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -43,7 +46,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = null;
         if (request.getCookies() != null) {
             log.debug("🍪 JwtAuthenticationFilter: Checking cookies for JWT token...");
-            token = tokenService.getCookieValueByName(request);
+            token = tokenService.extractTokenFromCookies(request);
+
+            if (token != null && jwtTokenProvider.validateToken(token)) { // ✅ Проверяем валидность токена
+                log.info("✅ JwtAuthenticationFilter: Valid token found in cookies.");
+            } else {
+                log.warn("❌ JwtAuthenticationFilter: Invalid or missing token in cookies.");
+                token = null; // Очищаем переменную, если токен невалидный
+            }
         }
 
         if (token == null) {
