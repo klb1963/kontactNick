@@ -3,7 +3,6 @@ package kontactNick.security.config;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.web.FilterChainProxy;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.Filter;
