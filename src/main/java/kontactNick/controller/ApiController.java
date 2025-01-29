@@ -30,14 +30,10 @@ import java.util.stream.Collectors;
 public class ApiController {
 
     private final UserRepository userRepository;
-    private final CategoryRepository categoryRepository;
-    private final FieldRepository fieldRepository;
 
     @Autowired
-    public ApiController(UserRepository userRepository, CategoryRepository categoryRepository, FieldRepository fieldRepository) {
+    public ApiController(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.categoryRepository = categoryRepository;
-        this.fieldRepository = fieldRepository;
     }
 
     // Главная страница
@@ -72,123 +68,29 @@ public class ApiController {
         return ResponseEntity.of(userRepository.findByEmail(email));
     }
 
-    @PreAuthorize("hasAuthority('ROLE_USER')")
-    @PostMapping("/categories")
-    public ResponseEntity<Category> createCategory(@RequestBody CategoryDto categoryDto) {
-        // извлекаем текущего пользователя из контекста
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        // находим его email
-        String email = authentication.getName();
-        log.debug("Authenticated email: {}", email);
+    // ✅ Получение OAuth URL с поддержкой Google и GitHub
+    @GetMapping("/auth/external-login")
+    public ResponseEntity<String> getExternalAuthUrl(@RequestParam(name = "provider", defaultValue = "google") String provider) {
+        log.info("🔗 External login requested for provider: {}", provider);
 
-        // находим собственно пользователя по его email
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        log.debug("Found user: {} with ID: {}", user.getEmail(), user.getId());
-
-        // Создаем категорию
-        Category category = new Category();
-        category.setName(categoryDto.getName());
-        category.setDescription(categoryDto.getDescription()); // ✅ Исправлено
-        category.setUser(user); // Связываем категорию с пользователем
-        //сохраняем категорию
-        Category savedCategory = categoryRepository.save(category);
-
-        log.debug("Saved category '{}' for user ID: {}", savedCategory.getName(), savedCategory.getUser().getId());
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedCategory);
-    }
-
-    // get categories
-    @PreAuthorize("hasAuthority('ROLE_USER')")
-    @GetMapping("/categories")
-    public ResponseEntity<List<Category>> getCategories(@AuthenticationPrincipal OidcUser oidcUser) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("User not authenticated");
+        String authUrl;
+        switch (provider.toLowerCase()) {
+            case "github":
+                authUrl = "https://github.com/login/oauth/authorize?client_id=YOUR_GITHUB_CLIENT_ID&scope=user";
+                break;
+            case "google":
+            default:
+                authUrl = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code"
+                        + "&client_id=YOUR_GOOGLE_CLIENT_ID"
+                        + "&redirect_uri=http://localhost:8080/login/oauth2/code/google"
+                        + "&scope=openid%20profile%20email"
+                        + "&state=state_value";
+                break;
         }
-
-        String email = authentication.getName(); // Получаем email из токена
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
-
-        List<Category> categories = categoryRepository.findByUser_Email(email);
-        return ResponseEntity.ok(categories);
-    }
-
-    // add ONE field to category
-    @PreAuthorize("hasAuthority('ROLE_USER')")
-    @PostMapping("/categories/{categoryId}/field")
-    public ResponseEntity<String> addFieldToCategory(@PathVariable Long categoryId, @RequestBody FieldDto fieldRequest) {
-        log.debug("Received request to add field to category with ID: {}", categoryId);
-
-        // Проверяем, существует ли категория
-        Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new RuntimeException("Category not found"));
-
-        log.debug("Category found: {}", category.getName());
-
-        // Создаем новое поле
-        Field field = new Field();
-        field.setName(fieldRequest.getName());
-        field.setFieldType(fieldRequest.getFieldType());
-        field.setValue(fieldRequest.getValue());
-        field.setCategory(category);
-
-        fieldRepository.save(field);
-
-        log.debug("Field saved successfully with ID: {}", field.getId());
-
-        return ResponseEntity.ok("Field added to category successfully");
-    }
-
-    // add A FEW fields to category
-    @PreAuthorize("hasAuthority('ROLE_USER')")
-    @PostMapping("/categories/{categoryId}/fields")
-    public ResponseEntity<String> addFieldsToCategory(@PathVariable Long categoryId, @RequestBody List<Field> fields) {
-        Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new RuntimeException("Category not found"));
-
-        for (Field field : fields) {
-            field.setCategory(category);
-            fieldRepository.save(field);
-        }
-
-        return ResponseEntity.ok("Fields added to category successfully");
-    }
-
-    @PreAuthorize("hasAuthority('ROLE_USER')")
-    @GetMapping("/categories/{categoryId}/fields")
-    public ResponseEntity<List<FieldDto>> getFieldsByCategory(@PathVariable Long categoryId) {
-        log.debug("Fetching fields for category ID: {}", categoryId);
-
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-
-        List<FieldDto> fields = category.getFields().stream()
-                .map(field -> new FieldDto(
-                        field.getId(),
-                        field.getName(),
-                        field.getDescription(),
-                        field.getFieldType(),
-                        field.getValue()))
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(fields);
-    }
-
-    @GetMapping("/api/token")
-    public ResponseEntity<String> getAuthUrl() {
-        String googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code"
-                + "&client_id=YOUR_CLIENT_ID"
-                + "&redirect_uri=http://localhost:8080/login/oauth2/code/google"
-                + "&scope=openid%20profile%20email"
-                + "&state=state_value";
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Access-Control-Allow-Origin", "http://localhost:4200");
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(googleAuthUrl);
-    }
 
+        return ResponseEntity.ok().headers(headers).body(authUrl);
+    }
 }

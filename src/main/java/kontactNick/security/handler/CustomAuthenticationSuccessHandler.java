@@ -96,7 +96,6 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             String redirectUrl = "http://localhost:4200/dashboard";  // ✅ Можно вынести в env
             log.info("➡ Перенаправляем пользователя на {}", redirectUrl);
             response.sendRedirect(redirectUrl);
-
         } else {
             log.error("❌ Ошибка аутентификации: не OIDC пользователь");
             response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
