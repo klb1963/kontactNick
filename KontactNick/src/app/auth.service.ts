@@ -40,12 +40,13 @@ export class AuthService {
 
   /** ✅ Проверка статуса аутентификации */
   public checkAuthStatus(): Observable<boolean> {
+    console.log('📡 Sending auth check request...');
     return this.http.get<{ authenticated?: boolean }>(
       `${this.baseUrl}/check`,
       { withCredentials: true }
     ).pipe(
       tap(response => console.log('🔍 Auth check response:', response)),
-      map(response => response?.authenticated ?? false),
+      map((response: any) => response?.authenticated === 'true'),
       catchError(error => {
         console.error('🚨 Auth check failed:', error);
         return of(false);
