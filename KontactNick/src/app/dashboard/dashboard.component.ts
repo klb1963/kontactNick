@@ -22,7 +22,7 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     console.log('🔍 DashboardComponent initialized, checking authentication...');
 
-    this.authService.checkAuth().pipe(
+    this.authService.checkAuthStatus().pipe(
       first(),
       switchMap(isAuthenticated => {
         if (!isAuthenticated) {
@@ -45,11 +45,11 @@ export class DashboardComponent implements OnInit {
         );
       })
     ).subscribe({
-      next: (categories) => {
+      next: (categories: any[]) => {  // Добавляем тип `any[]`
         this.categories = categories;
         console.log('✅ Categories loaded:', categories);
       },
-      error: (err) => console.error('🚨 Error loading categories:', err)
+      error: (err: any) => console.error('🚨 Error loading categories:', err)
     });
   }
 
