@@ -38,14 +38,14 @@ export class LoginComponent implements OnInit {
     console.log('🟢 LoginComponent initialized');
 
     if (isPlatformBrowser(this.platformId)) {
-      this.authService.checkAuth().pipe(first()).subscribe({
+      this.authService.checkAuthStatus().pipe(first()).subscribe({
         next: (isAuthenticated: boolean) => {
           if (isAuthenticated) {
             console.log('🍪 Token найден, редирект на Dashboard');
             this.router.navigate(['/dashboard']);
           }
         },
-        error: (err) => console.warn('❌ Ошибка проверки авторизации:', err),
+        error: (err: any) => console.warn('❌ Ошибка проверки авторизации:', err)
       });
     }
   }

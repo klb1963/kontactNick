@@ -28,14 +28,8 @@ export class AuthService {
     return this.http.get<{ token?: string }>(`${this.baseUrl}/token`, {
       withCredentials: true
     }).pipe(
-      tap(response => console.log("🔑 Raw response from server:", response)), // 🔥 Логируем реальный ответ
-      map(response => {
-        if (!response || !response.token) {
-          console.warn("❌ No token found in response");
-          return null;
-        }
-        return response.token;
-      }),
+      tap(response => console.log("🔑 Raw response from server:", response)),
+      map(response => response?.token ?? null),
       tap(token => console.log("🔑 Extracted Token:", token)),
       catchError(error => {
         console.error("🚨 Error fetching token from server:", error);
@@ -44,10 +38,25 @@ export class AuthService {
     );
   }
 
+  /** ✅ Проверка статуса аутентификации */
+  public checkAuthStatus(): Observable<boolean> {
+    return this.http.get<{ authenticated?: boolean }>(
+      `${this.baseUrl}/check`,
+      { withCredentials: true }
+    ).pipe(
+      tap(response => console.log('🔍 Auth check response:', response)),
+      map(response => response?.authenticated ?? false),
+      catchError(error => {
+        console.error('🚨 Auth check failed:', error);
+        return of(false);
+      })
+    );
+  }
+
   /** ✅ Проверка авторизации */
   public isLoggedIn(): Observable<boolean> {
     return this.getTokenFromServer().pipe(
-      map(token => !!token),
+      switchMap(token => token ? this.checkAuthStatus() : of(false)),
       catchError(() => of(false))
     );
   }
@@ -96,21 +105,6 @@ export class AuthService {
           error: (err) => console.error('🚨 Logout error:', err)
         });
     }
-  }
-
-  /** ✅ Проверка аутентификации */
-  public checkAuth(): Observable<boolean> {
-    return this.http.get<{ authenticated?: boolean }>(
-      `${this.baseUrl}/check`,
-      { withCredentials: true }
-    ).pipe(
-      tap(response => console.log('🔍 Auth check response:', response)),
-      map(response => !!response.authenticated),
-      catchError(error => {
-        console.error('🚨 Auth check failed:', error);
-        return of(false);
-      })
-    );
   }
 
   /** ✅ Получение категорий пользователя (с проверкой токена) */
