@@ -1,60 +1,46 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../auth.service';
-import { first, switchMap, of } from 'rxjs';
-import { CommonModule } from '@angular/common';
+import { CategoryDialogComponent } from '../category-dialog/category-dialog.component';
 
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.css'],
   standalone: true,
-  imports: [CommonModule]
+  styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit {
   categories: any[] = [];
+  displayedColumns: string[] = ['name', 'actions'];
 
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
+  constructor(private authService: AuthService, private dialog: MatDialog) {}
 
   ngOnInit(): void {
-    console.log('🔍 DashboardComponent initialized, checking authentication...');
+    this.loadCategories();
+  }
 
-    this.authService.checkAuthStatus().pipe(
-      first(),
-      switchMap(isAuthenticated => {
-        if (!isAuthenticated) {
-          console.warn('❌ User is NOT authenticated, redirecting to login');
-          this.router.navigate(['/login']);
-          return of([]); // ✅ Возвращаем пустой массив, чтобы не ломался `subscribe`
-        }
-
-        console.log('✅ User is authenticated, retrieving JWT...');
-        return this.authService.getTokenFromServer().pipe(
-          switchMap(token => {
-            if (!token) {
-              console.warn('❌ No JWT found, skipping category request');
-              return of([]);
-            }
-
-            console.log('📡 Fetching categories with JWT...');
-            return this.authService.getUserCategories();
-          })
-        );
-      })
-    ).subscribe({
-      next: (categories: any[]) => {  // Добавляем тип `any[]`
-        this.categories = categories;
-        console.log('✅ Categories loaded:', categories);
-      },
-      error: (err: any) => console.error('🚨 Error loading categories:', err)
+  loadCategories() {
+    this.authService.getUserCategories().subscribe(categories => {
+      this.categories = categories;
     });
   }
 
-  logout(): void {
-    console.log('🔴 Logging out...');
-    this.authService.logout();
+  openCategoryDialog(category: any = null) {
+    const dialogRef = this.dialog.open(CategoryDialogComponent, {
+      width: '400px',
+      data: category
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.loadCategories();
+      }
+    });
+  }
+
+  deleteCategory(id: number) {
+    if (confirm('Are you sure you want to delete this category?')) {
+      this.authService.deleteCategory(id).subscribe(() => this.loadCategories());
+    }
   }
 }
