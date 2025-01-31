@@ -4,7 +4,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { routes } from './app/app.routes';
 import { AppComponent } from './app/app.component';
-import { AuthInterceptor } from './auth.interceptor.service';
+import { AuthInterceptor } from './app/auth.interceptor.service';
 
 bootstrapApplication(AppComponent, {
   providers: [
