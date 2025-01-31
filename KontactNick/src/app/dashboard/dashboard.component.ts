@@ -1,19 +1,32 @@
-import { Component, OnInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTableModule } from '@angular/material/table';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../auth.service';
-import { CategoryDialogComponent } from '../category-dialog/category-dialog.component';
+import { CategoryDialogComponent } from '../category-dialog/category-dialog.component'; // ✅ Добавлен импорт
 
 @Component({
   selector: 'app-dashboard',
-  templateUrl: './dashboard.component.html',
   standalone: true,
-  styleUrls: ['./dashboard.component.css']
+  templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.css'],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatIconModule,
+    MatTableModule,
+    MatDialogModule,
+    // CategoryDialogComponent // ✅ Добавляем компонент в `imports`
+  ]
 })
 export class DashboardComponent implements OnInit {
   categories: any[] = [];
   displayedColumns: string[] = ['name', 'actions'];
 
-  constructor(private authService: AuthService, private dialog: MatDialog) {}
+  private authService = inject(AuthService);
+  private dialog = inject(MatDialog);
 
   ngOnInit(): void {
     this.loadCategories();
@@ -26,7 +39,7 @@ export class DashboardComponent implements OnInit {
   }
 
   openCategoryDialog(category: any = null) {
-    const dialogRef = this.dialog.open(CategoryDialogComponent, {
+    const dialogRef = this.dialog.open(CategoryDialogComponent, { // ✅ Теперь `CategoryDialogComponent` доступен
       width: '400px',
       data: category
     });
