@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -47,7 +48,7 @@ public class AuthController {
     }
 
     /**
-     * Регистрация нового пользователя
+     * ✅ Регистрация нового пользователя
      */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserDto userDto) {
@@ -57,24 +58,14 @@ public class AuthController {
     }
 
     /**
-     * Аутентификация пользователя и выдача JWT
+     * ✅ Аутентификация пользователя и выдача JWT
      */
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginDto loginDto,
-                                                     HttpServletRequest request,
                                                      HttpServletResponse response) {
         log.debug("🔑 Login request received: email={}", loginDto.getEmail());
 
-        // Извлекаем токен из cookies
-        String existingToken = tokenService.extractTokenFromCookies(request);
-
-        // Проверяем, действителен ли он
-        if (StringUtils.hasText(existingToken) && tokenService.validateToken(existingToken)) {
-            log.info("✅ Valid token already exists for {}. Returning existing token.", loginDto.getEmail());
-            return ResponseEntity.ok(Map.of("message", "Already logged in", "token", existingToken));
-        }
-
-        // Аутентификация пользователя
+        // 🔐 Аутентификация пользователя
         String newToken = userService.authenticate(loginDto.getEmail(), loginDto.getPassword());
 
         if (!StringUtils.hasText(newToken)) {
@@ -83,28 +74,57 @@ public class AuthController {
                     .body(Collections.singletonMap("error", "Invalid email or password"));
         }
 
-        // Создаём и добавляем JWT в HttpOnly Cookie
+        // ✅ Создаём и добавляем НОВЫЙ JWT в HttpOnly Cookie
         ResponseCookie accessTokenCookie = tokenService.generateCookie(newToken);
-        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+        response.setHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
 
         log.info("✅ Login successful, new token issued for {}", loginDto.getEmail());
         return ResponseEntity.ok(Map.of("token", newToken));
     }
 
     /**
-     * Получение JWT-токена из Cookies
+     * ✅ Получение OAuth URL для Google / GitHub
+     */
+    @GetMapping("/external-login")
+    public ResponseEntity<String> getExternalAuthUrl(@RequestParam(name = "provider", defaultValue = "google") String provider) {
+        log.info("🔗 External login requested for provider: {}", provider);
+
+        String authUrl;
+        switch (provider.toLowerCase()) {
+            case "github":
+                authUrl = "https://github.com/login/oauth/authorize?client_id=YOUR_GITHUB_CLIENT_ID&scope=user";
+                break;
+            case "google":
+            default:
+                authUrl = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code"
+                        + "&client_id=YOUR_GOOGLE_CLIENT_ID"
+                        + "&redirect_uri=http://localhost:8080/login/oauth2/code/google"
+                        + "&scope=openid%20profile%20email"
+                        + "&state=state_value";
+                break;
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Access-Control-Allow-Origin", "http://localhost:4200");
+
+        return ResponseEntity.ok().headers(headers).body(authUrl);
+    }
+
+    /**
+     * ✅ Получение JWT-токена из Cookies
      */
     @GetMapping("/token")
-    @CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
     public ResponseEntity<?> getToken(HttpServletRequest request) {
-        // Получаем куку с токеном
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
                 if ("jwt-token".equals(cookie.getName())) {
                     String jwt = cookie.getValue();
-                    log.info("✅ Retrieved token from cookie for user: {}", jwtTokenProvider.getUsernameFromToken(jwt));
-                    return ResponseEntity.ok(Map.of("token", jwt));
+                    if (jwt != null && tokenService.validateToken(jwt)) {
+                        String email = jwtTokenProvider.getUsernameFromToken(jwt);
+                        log.info("✅ Retrieved token for user: {}", email);
+                        return ResponseEntity.ok(Map.of("token", jwt));
+                    }
                 }
             }
         }
@@ -114,7 +134,7 @@ public class AuthController {
     }
 
     /**
-     * Проверка аутентификации пользователя
+     * ✅ Проверка аутентификации пользователя
      */
     @GetMapping("/check")
     @PreAuthorize("isAuthenticated()")
@@ -128,37 +148,23 @@ public class AuthController {
     }
 
     /**
-     * Получение профиля текущего пользователя
+     * ✅ Выход из системы (Logout)
      */
-    @GetMapping("/profile")
-    public ResponseEntity<?> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            log.warn("❌ Пользователь не аутентифицирован");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User not authenticated"));
-        }
-
-        String email = userDetails.getUsername();
-        User user = userService.getUserByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        log.info("✅ Профиль пользователя загружен: {}", email);
-        return ResponseEntity.ok(Map.of(
-                "email", user.getEmail(),
-                "nick", user.getNick(),
-                "avatarUrl", user.getAvatarUrl(),
-                "role", user.getRole()
-        ));
-    }
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie("jwt-token", "");
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setMaxAge(0);  // Удаляем куку
-        response.addCookie(cookie);
-        return ResponseEntity.ok().body("Logged out successfully");
-    }
+        log.info("🔴 Logging out user...");
 
+        // Удаляем куку JWT
+        ResponseCookie accessTokenCookie = ResponseCookie.from("jwt-token", "")
+                .httpOnly(true)
+                .secure(true) // Установи false, если работаешь по HTTP
+                .path("/")
+                .maxAge(0) // Немедленное удаление куки
+                .build();
+
+        response.setHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+
+        log.info("✅ Logout successful");
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+    }
 }

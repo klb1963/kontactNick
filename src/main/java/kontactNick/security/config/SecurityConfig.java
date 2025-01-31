@@ -26,7 +26,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler; // ✅ Обновленный successHandler
+    private final CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -37,27 +37,31 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(withDefaults()) // ✅ Разрешаем CORS
-                .csrf().disable() // ✅ Отключаем CSRF (не нужен для API)
+                .csrf(csrf -> csrf.disable()) // ✅ Отключаем CSRF (не нужен для API)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/home", "/api/**").permitAll() // ✅ Открытые эндпоинты
+                        // ✅ Открытые эндпоинты
+                        .requestMatchers("/", "/home").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll() // ✅ Открываем только эндпоинты аутентификации
+                        .requestMatchers("/api/public/**").permitAll() // ✅ Добавляем зону публичных API
                         .requestMatchers("/api/oauth2/profile").authenticated() // ✅ Требует аутентификации
                         .requestMatchers("/api/categories").hasAuthority("ROLE_USER") // ✅ Требует роль
-                        .requestMatchers("/api/auth/token").authenticated() // ✅ Теперь /token требует аутентификации
+                        .requestMatchers("/api/auth/token").authenticated() // ✅ Требует аутентификации
                         .anyRequest().authenticated() // ✅ Все остальные запросы требуют авторизации
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // ✅ Используем stateless-аутентификацию (JWT)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // ✅ Stateless аутентификация (JWT)
                 .oauth2Login(oauth2 -> oauth2
-                        .successHandler(customAuthenticationSuccessHandler) // ✅ Используем обновленный successHandler
+                        .successHandler(customAuthenticationSuccessHandler) // ✅ Используем кастомный successHandler
                 )
                 .logout(logout -> logout
-                        .logoutSuccessUrl("/").permitAll() // ✅ Разрешаем выход из системы
+                        .logoutSuccessUrl("/").permitAll() // ✅ Разрешаем выход
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // ✅ JWT фильтр перед UsernamePasswordAuthenticationFilter
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // ✅ Добавляем JWT фильтр перед стандартной аутентификацией
                 .exceptionHandling(exc -> exc
                         .authenticationEntryPoint((request, response, authException) -> {
                             log.warn("❌ Unauthorized request to {}", request.getRequestURI());
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.setContentType("application/json");
+                            response.setHeader("WWW-Authenticate", "Bearer realm=\"Access to API\""); // 🔥 Добавлен заголовок
                             response.getWriter().write("{\"error\": \"Unauthorized\"}");
                         })
                 );
@@ -69,12 +73,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:4200"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")); // ✅ Расширен список методов
         configuration.setAllowCredentials(true);
         configuration.setAllowedHeaders(List.of("Authorization", "Cache-Control", "Content-Type"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-
 }

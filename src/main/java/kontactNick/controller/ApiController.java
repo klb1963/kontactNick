@@ -9,6 +9,7 @@ import kontactNick.entity.User;
 import kontactNick.repository.CategoryRepository;
 import kontactNick.repository.FieldRepository;
 import kontactNick.repository.UserRepository;
+import kontactNick.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -18,10 +19,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,67 +34,65 @@ import java.util.stream.Collectors;
 public class ApiController {
 
     private final UserRepository userRepository;
+    private final UserService userService;
 
     @Autowired
-    public ApiController(UserRepository userRepository) {
+    public ApiController(UserRepository userRepository, UserService userService) {
         this.userRepository = userRepository;
+        this.userService = userService;
     }
 
-    // Главная страница
+    // ✅ Главная страница API
     @GetMapping("/")
     public String apiRoot() {
         return "Welcome to KontactNick API";
     }
 
-    // Эндпойнт для профиля пользователя
-    @GetMapping("/profile")
-    public ResponseEntity<UserProfileDto> getProfile(@AuthenticationPrincipal OidcUser oidcUser) {
-        String email = oidcUser.getEmail();
-        return userRepository.findByEmail(email)
-                .map(user -> ResponseEntity.ok(new UserProfileDto(
-                        user.getNick(),
-                        user.getEmail(),
-                        user.getRole()
-                )))
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    // Создание нового пользователя
+    // ✅ Создание нового пользователя
     @PostMapping("/users")
     public String createUser(@RequestBody User user) {
         userRepository.save(user);
         return "User " + user.getNick() + " created!";
     }
 
-    // Получение пользователя по email
+    // ✅ Получение пользователя по email
     @GetMapping("/users/{email}")
     public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
         return ResponseEntity.of(userRepository.findByEmail(email));
     }
 
-    // ✅ Получение OAuth URL с поддержкой Google и GitHub
-    @GetMapping("/auth/external-login")
-    public ResponseEntity<String> getExternalAuthUrl(@RequestParam(name = "provider", defaultValue = "google") String provider) {
-        log.info("🔗 External login requested for provider: {}", provider);
-
-        String authUrl;
-        switch (provider.toLowerCase()) {
-            case "github":
-                authUrl = "https://github.com/login/oauth/authorize?client_id=YOUR_GITHUB_CLIENT_ID&scope=user";
-                break;
-            case "google":
-            default:
-                authUrl = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code"
-                        + "&client_id=YOUR_GOOGLE_CLIENT_ID"
-                        + "&redirect_uri=http://localhost:8080/login/oauth2/code/google"
-                        + "&scope=openid%20profile%20email"
-                        + "&state=state_value";
-                break;
+    /**
+     * ✅ Получение профиля текущего пользователя
+     */
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            log.warn("❌ Пользователь не аутентифицирован");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User not authenticated"));
         }
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Access-Control-Allow-Origin", "http://localhost:4200");
+        String email = userDetails.getUsername();
 
-        return ResponseEntity.ok().headers(headers).body(authUrl);
+        if (email == null || email.isBlank()) {
+            log.error("❌ Ошибка: у аутентифицированного пользователя отсутствует email!");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Email is missing"));
+        }
+
+        Optional<User> userOpt = userService.getUserByEmail(email);
+
+        if (userOpt.isEmpty()) {
+            log.warn("❌ Пользователь с email {} не найден в базе данных", email);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found"));
+        }
+
+        User user = userOpt.get();
+
+        log.info("✅ Профиль пользователя загружен: {}", email);
+        return ResponseEntity.ok(Map.of(
+                "email", user.getEmail(),
+                "nick", user.getNick(),
+                "avatarUrl", user.getAvatarUrl(),
+                "role", user.getRole()
+        ));
     }
 }
