@@ -87,12 +87,15 @@ public class ApiController {
 
         User user = userOpt.get();
 
+        log.info("📌 User details: email={}, nick={}, avatar={}, role={}",
+                user.getEmail(), user.getNick(), user.getAvatarUrl(), user.getRole());
+
         log.info("✅ Профиль пользователя загружен: {}", email);
         return ResponseEntity.ok(Map.of(
                 "email", user.getEmail(),
-                "nick", user.getNick(),
-                "avatarUrl", user.getAvatarUrl(),
-                "role", user.getRole()
+                "nick", user.getNick() != null ? user.getNick() : "",
+                "avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
+                "role", user.getRole() != null ? user.getRole() : "USER"
         ));
     }
 }
