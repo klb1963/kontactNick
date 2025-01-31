@@ -1,16 +1,15 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { routes } from './app/app.routes';
 import { AppComponent } from './app/app.component';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async'; // ✅ Импортируем как ФУНКЦИЮ
+import { AuthInterceptor } from './auth.interceptor.service';
 
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
     provideAnimations(),
-    provideHttpClient(),
-    provideAnimationsAsync() // ✅ Теперь передаем функцию без дубликатов
+    provideHttpClient(withInterceptors([AuthInterceptor]))
   ],
 }).catch((err) => console.error(err));
