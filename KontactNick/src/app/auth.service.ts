@@ -116,7 +116,7 @@ export class AuthService {
           console.warn('❌ No JWT found, skipping category request');
           return of([]);
         }
-        return this.http.get<any[]>(`${this.baseUrl}/categories/my`, { withCredentials: true }).pipe(
+        return this.http.get<any[]>('http://localhost:8080/api/categories', { withCredentials: true }).pipe(
           tap(categories => console.log('📂 Categories received:', categories)),
           catchError(error => {
             console.error('🚨 Error fetching categories:', error);
@@ -126,4 +126,18 @@ export class AuthService {
       })
     );
   }
+
+  addCategory(categoryName: string) {
+    return this.http.post('http://localhost:8080/api/categories', { name: categoryName }, { withCredentials: true });
+
+  }
+
+  updateCategory(categoryId: number, newName: string) {
+    return this.http.put(`${this.baseUrl}/categories/${categoryId}`, { name: newName }, { withCredentials: true });
+  }
+
+  deleteCategory(categoryId: number) {
+    return this.http.delete(`${this.baseUrl}/categories/${categoryId}`, { withCredentials: true });
+  }
+
 }
