@@ -17,8 +17,7 @@ import { CategoryDialogComponent } from '../category-dialog/category-dialog.comp
     MatCardModule,
     MatIconModule,
     MatTableModule,
-    MatDialogModule,
-    CategoryDialogComponent
+    MatDialogModule
   ]
 })
 export class DashboardComponent implements OnInit {
