@@ -127,17 +127,28 @@ export class AuthService {
     );
   }
 
-  addCategory(categoryName: string) {
-    return this.http.post('http://localhost:8080/api/categories', { name: categoryName }, { withCredentials: true });
-
+  createCategory(category: { name: string }) {
+    return this.http.post('http://localhost:8080/api/categories', category, { withCredentials: true })
+      .pipe(
+        catchError(error => {
+          console.error('🚨 Error creating category:', error);
+          return of(null);
+        })
+      );
   }
 
-  updateCategory(categoryId: number, newName: string) {
-    return this.http.put(`${this.baseUrl}/categories/${categoryId}`, { name: newName }, { withCredentials: true });
+  updateCategory(id: number, category: { name: string }) {
+    return this.http.put(`http://localhost:8080/api/categories/${id}`, category, { withCredentials: true })
+      .pipe(
+        catchError(error => {
+          console.error('🚨 Error updating category:', error);
+          return of(null);
+        })
+      );
   }
 
   deleteCategory(categoryId: number) {
-    return this.http.delete(`${this.baseUrl}/categories/${categoryId}`, { withCredentials: true });
+    return this.http.delete(`http://localhost:8080/api/categories/${categoryId}`, { withCredentials: true });
   }
 
 }
