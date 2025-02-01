@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../auth.service';
-import { CategoryDialogComponent } from '../category-dialog/category-dialog.component'; // ✅ Добавлен импорт
+import { CategoryDialogComponent } from '../category-dialog/category-dialog.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -18,7 +18,7 @@ import { CategoryDialogComponent } from '../category-dialog/category-dialog.comp
     MatIconModule,
     MatTableModule,
     MatDialogModule,
-    // CategoryDialogComponent // ✅ Добавляем компонент в `imports`
+    CategoryDialogComponent
   ]
 })
 export class DashboardComponent implements OnInit {
@@ -39,14 +39,20 @@ export class DashboardComponent implements OnInit {
   }
 
   openCategoryDialog(category: any = null) {
-    const dialogRef = this.dialog.open(CategoryDialogComponent, { // ✅ Теперь `CategoryDialogComponent` доступен
+    const dialogRef = this.dialog.open(CategoryDialogComponent, {
       width: '400px',
       data: category
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.loadCategories();
+        if (category) {
+          // Редактирование существующей категории
+          this.authService.updateCategory(category.id, { name: result }).subscribe(() => this.loadCategories());
+        } else {
+          // Добавление новой категории
+          this.authService.createCategory({ name: result }).subscribe(() => this.loadCategories());
+        }
       }
     });
   }
@@ -60,15 +66,14 @@ export class DashboardComponent implements OnInit {
   logout() {
     fetch('http://localhost:8080/api/auth/logout', {
       method: 'POST',
-      credentials: 'include' // ✅ Отправляем куки вместе с запросом
+      credentials: 'include'
     })
       .then(response => {
         if (response.ok) {
           console.log("✅ Logged out successfully");
-          window.location.href = '/login'; // ✅ Редирект на страницу логина
+          window.location.href = '/login';
         }
       })
       .catch(error => console.error("❌ Logout failed:", error));
   }
-
 }
