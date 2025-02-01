@@ -151,15 +151,17 @@ public class AuthController {
      * ✅ Выход из системы (Logout)
      */
     @PostMapping("/logout")
+    @CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")  // ✅ Разрешаем отправку куки с фронта
     public ResponseEntity<?> logout(HttpServletResponse response) {
         log.info("🔴 Logging out user...");
 
         // Удаляем куку JWT
         ResponseCookie accessTokenCookie = ResponseCookie.from("jwt-token", "")
                 .httpOnly(true)
-                .secure(true) // Установи false, если работаешь по HTTP
+                .secure(false)  // ✅ Для работы с localhost используем false
+                .sameSite("Lax") // ✅ Устанавливаем SameSite для поддержки кросс-доменных запросов
                 .path("/")
-                .maxAge(0) // Немедленное удаление куки
+                .maxAge(0) // ✅ Немедленное удаление куки
                 .build();
 
         response.setHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
