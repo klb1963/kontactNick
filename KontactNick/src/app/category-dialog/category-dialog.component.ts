@@ -22,16 +22,21 @@ import { MatButtonModule } from '@angular/material/button';
 })
 export class CategoryDialogComponent {
   categoryName: string;
+  categoryDescription: string; // ✅ Добавлено для поля описания
 
   constructor(
     private dialogRef: MatDialogRef<CategoryDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.categoryName = data?.name || '';
+    this.categoryDescription = data?.description || '';  // ✅ Инициализация описания
   }
 
   save() {
-    this.dialogRef.close(this.categoryName);
+    this.dialogRef.close({
+      name: this.categoryName,
+      description: this.categoryDescription // ✅ Передача описания при сохранении
+    });
   }
 
   close() {
