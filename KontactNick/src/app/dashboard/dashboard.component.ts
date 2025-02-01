@@ -22,7 +22,7 @@ import { CategoryDialogComponent } from '../category-dialog/category-dialog.comp
 })
 export class DashboardComponent implements OnInit {
   categories: any[] = [];
-  displayedColumns: string[] = ['name', 'actions'];
+  displayedColumns: string[] = ['name', 'description', 'actions'];
 
   private authService = inject(AuthService);
   private dialog = inject(MatDialog);
@@ -46,11 +46,11 @@ export class DashboardComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         if (category) {
-          // Редактирование существующей категории
-          this.authService.updateCategory(category.id, { name: result }).subscribe(() => this.loadCategories());
+          // Редактирование категории
+          this.authService.updateCategory(category.id, result).subscribe(() => this.loadCategories());
         } else {
-          // Добавление новой категории
-          this.authService.createCategory({ name: result }).subscribe(() => this.loadCategories());
+          // Создание новой категории
+          this.authService.createCategory(result).subscribe(() => this.loadCategories());
         }
       }
     });

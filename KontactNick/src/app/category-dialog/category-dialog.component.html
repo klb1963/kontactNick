@@ -1,10 +1,19 @@
 <h2 mat-dialog-title>Category</h2>
+
 <mat-dialog-content>
-  <mat-form-field style="width: 100%;">
+  <!-- Поле для названия категории -->
+  <mat-form-field style="width: 100%;" appearance="fill">
     <mat-label>Category Name</mat-label>
-    <input matInput [(ngModel)]="categoryName">
+    <input matInput [(ngModel)]="categoryName" placeholder="Enter category name">
+  </mat-form-field>
+
+  <!-- ✅ Новое поле для описания -->
+  <mat-form-field style="width: 100%;" appearance="fill">
+    <mat-label>Description</mat-label>
+    <textarea matInput [(ngModel)]="categoryDescription" rows="3" placeholder="Enter description"></textarea>
   </mat-form-field>
 </mat-dialog-content>
+
 <mat-dialog-actions align="end">
   <button mat-button (click)="close()">Cancel</button>
   <button mat-button color="primary" (click)="save()">Save</button>

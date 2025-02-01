@@ -1,5 +1,6 @@
 package kontactNick.controller;
 
+import jakarta.validation.Valid;
 import kontactNick.dto.CategoryDto;
 import kontactNick.dto.FieldDto;
 import kontactNick.entity.Category;
@@ -37,7 +38,7 @@ public class CategoryController {
 
     // ✅ Создание категории
     @PostMapping
-    public ResponseEntity<Category> createCategory(@RequestBody CategoryDto categoryDto) {
+    public ResponseEntity<Category> createCategory(@Valid @RequestBody CategoryDto categoryDto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         log.debug("🔑 Authenticated user: {}", email);
 

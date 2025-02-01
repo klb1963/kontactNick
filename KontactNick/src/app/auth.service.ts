@@ -127,7 +127,7 @@ export class AuthService {
     );
   }
 
-  createCategory(category: { name: string }) {
+  createCategory(category: { name: string, description: string }) {
     return this.http.post('http://localhost:8080/api/categories', category, { withCredentials: true })
       .pipe(
         catchError(error => {
@@ -137,7 +137,7 @@ export class AuthService {
       );
   }
 
-  updateCategory(id: number, category: { name: string }) {
+  updateCategory(id: number, category: { name: string, description: string  }) {
     return this.http.put(`http://localhost:8080/api/categories/${id}`, category, { withCredentials: true })
       .pipe(
         catchError(error => {
