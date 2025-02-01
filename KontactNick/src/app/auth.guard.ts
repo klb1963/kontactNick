@@ -1,9 +1,8 @@
-import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
 import { AuthService } from './auth.service';
-import { isPlatformBrowser } from '@angular/common';
-import { Observable } from 'rxjs';
-import { tap, map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { tap, map, catchError } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
@@ -11,20 +10,11 @@ import { tap, map } from 'rxjs/operators';
 export class AuthGuard implements CanActivate {
   constructor(
     private authService: AuthService,
-    private router: Router,
-    @Inject(PLATFORM_ID) private platformId: object
+    private router: Router
   ) {}
 
   canActivate(): Observable<boolean> {
     console.log('🔍 AuthGuard: Checking authentication status');
-
-    if (!isPlatformBrowser(this.platformId)) {
-      console.warn('⚠️ AuthGuard: Running in SSR mode, skipping authentication check.');
-      return new Observable<boolean>(observer => {
-        observer.next(true);
-        observer.complete();
-      }); // ✅ В SSR пропускаем проверку
-    }
 
     return this.authService.checkAuthStatus().pipe(
       tap(isAuthenticated => {
@@ -35,7 +25,12 @@ export class AuthGuard implements CanActivate {
           this.router.navigate(['/login']);
         }
       }),
-      map(isAuthenticated => isAuthenticated)
+      map(isAuthenticated => isAuthenticated),
+      catchError((error) => {
+        console.error('🚨 AuthGuard Error:', error);
+        this.router.navigate(['/login']);
+        return of(false);
+      })
     );
   }
 }
