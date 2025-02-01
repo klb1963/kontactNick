@@ -56,4 +56,19 @@ export class DashboardComponent implements OnInit {
       this.authService.deleteCategory(id).subscribe(() => this.loadCategories());
     }
   }
+
+  logout() {
+    fetch('http://localhost:8080/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include' // ✅ Отправляем куки вместе с запросом
+    })
+      .then(response => {
+        if (response.ok) {
+          console.log("✅ Logged out successfully");
+          window.location.href = '/login'; // ✅ Редирект на страницу логина
+        }
+      })
+      .catch(error => console.error("❌ Logout failed:", error));
+  }
+
 }
