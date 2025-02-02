@@ -24,15 +24,14 @@ export class AuthService {
 
   /** ✅ Получение токена с сервера (если HttpOnly) */
   public getTokenFromServer(): Observable<string | null> {
-    console.log('📡 Sending GET request to /api/auth/token...');
     return this.http.get<{ token?: string }>(`${this.baseUrl}/token`, {
       withCredentials: true
     }).pipe(
-      tap(response => console.log("🔑 Raw response from server:", response)),
       map(response => response?.token ?? null),
-      tap(token => console.log("🔑 Extracted Token:", token)),
       catchError(error => {
-        console.error("🚨 Error fetching token from server:", error);
+        if (error.status !== 401) {  // ✅ Показываем только важные ошибки
+          console.error("🚨 Unexpected error fetching token:", error);
+        }
         return of(null);
       })
     );
@@ -40,15 +39,15 @@ export class AuthService {
 
   /** ✅ Проверка статуса аутентификации */
   public checkAuthStatus(): Observable<boolean> {
-    console.log('📡 Sending auth check request...');
     return this.http.get<{ authenticated?: boolean }>(
       `${this.baseUrl}/check`,
       { withCredentials: true }
     ).pipe(
-      tap(response => console.log('🔍 Auth check response:', response)),
       map((response: any) => response?.authenticated === 'true'),
       catchError(error => {
-        console.error('🚨 Auth check failed:', error);
+        if (error.status !== 401) {  // ✅ Логируем только неожиданные ошибки
+          console.error('🚨 Unexpected auth check error:', error);
+        }
         return of(false);
       })
     );
@@ -113,7 +112,7 @@ export class AuthService {
     return this.getTokenFromServer().pipe(
       switchMap(token => {
         if (!token) {
-          console.warn('❌ No JWT found, skipping category request');
+          console.warn("ℹ️ User not authenticated, category request skipped");
           return of([]);
         }
         return this.http.get<any[]>('http://localhost:8080/api/categories', { withCredentials: true }).pipe(
