@@ -150,4 +150,8 @@ export class AuthService {
     return this.http.delete(`http://localhost:8080/api/categories/${categoryId}`, { withCredentials: true });
   }
 
+  addFieldToCategory(categoryId: number, field: { name: string, fieldType: string, value: string }) {
+    return this.http.post(`http://localhost:8080/api/categories/${categoryId}/field`, field, { withCredentials: true });
+  }
+
 }

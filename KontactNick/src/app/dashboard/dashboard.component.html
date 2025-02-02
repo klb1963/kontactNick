@@ -25,6 +25,9 @@
           <button mat-icon-button color="warn" (click)="deleteCategory(category.id)">
             <mat-icon>delete</mat-icon>
           </button>
+          <button mat-icon-button color="accent" (click)="openFieldDialog(category.id)">
+            <mat-icon>add</mat-icon> <!-- Иконка добавления поля -->
+          </button>
         </td>
       </ng-container>
 

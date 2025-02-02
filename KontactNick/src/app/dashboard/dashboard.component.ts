@@ -6,6 +6,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../auth.service';
 import { CategoryDialogComponent } from '../category-dialog/category-dialog.component';
+import { FieldDialogComponent } from '../field-dialog/field-dialog.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -74,5 +75,19 @@ export class DashboardComponent implements OnInit {
         }
       })
       .catch(error => console.error("❌ Logout failed:", error));
+  }
+
+  // Метод для открытия диалога добавления поля
+  openFieldDialog(categoryId: number) {
+    const dialogRef = this.dialog.open(FieldDialogComponent, {
+      width: '400px',
+      data: { categoryId }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.authService.addFieldToCategory(categoryId, result).subscribe(() => this.loadCategories());
+      }
+    });
   }
 }
