@@ -138,4 +138,51 @@ public class CategoryController {
         log.info("🗑 Deleted category '{}' for user '{}'", category.getName(), email);
         return ResponseEntity.noContent().build();
     }
+
+    // ✅ Получение полей категории с проверкой владельца
+    // ✅ Получение полей категории с проверкой владельца
+    @GetMapping("/{categoryId}/fields")
+    public ResponseEntity<List<FieldDto>> getFieldsByCategory(@PathVariable Long categoryId) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.debug("📌 Fetching fields for category ID: {} by user: {}", categoryId, email);
+
+        // Проверим наличие пользователя в контексте безопасности
+        if (email == null || email.isEmpty()) {
+            log.warn("❌ No authenticated user found in SecurityContext.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
+
+        // Поиск категории и проверка владельца
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> {
+                    log.warn("❌ Category {} not found in the database.", categoryId);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found");
+                });
+
+        // 🔍 Проверка владельца категории
+        boolean isOwner = category.getUser().getEmail().equals(email);
+        log.debug("🔍 Ownership check for category '{}': Expected owner '{}', actual owner '{}'",
+                category.getName(), email, category.getUser().getEmail());
+
+        if (!isOwner) {
+            log.warn("❌ Access denied. Category '{}' (ID: {}) does not belong to user '{}'",
+                    category.getName(), categoryId, email);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+
+        log.debug("✅ Category '{}' (ID: {}) belongs to user '{}'", category.getName(), categoryId, email);
+
+        // Преобразование полей в DTO для ответа
+        List<FieldDto> fields = category.getFields().stream()
+                .map(field -> new FieldDto(
+                        field.getId(),
+                        field.getName(),
+                        field.getDescription(),
+                        field.getFieldType(),
+                        field.getValue()))
+                .collect(Collectors.toList());
+
+        log.info("✅ Found {} fields for category '{}' (ID: {})", fields.size(), category.getName(), categoryId);
+        return ResponseEntity.ok(fields);
+    }
 }

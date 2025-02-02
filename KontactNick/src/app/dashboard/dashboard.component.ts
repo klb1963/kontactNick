@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,7 +6,8 @@ import { MatTableModule } from '@angular/material/table';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../auth.service';
 import { CategoryDialogComponent } from '../category-dialog/category-dialog.component';
-import { FieldDialogComponent } from '../field-dialog/field-dialog.component';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-dashboard',
@@ -18,7 +19,8 @@ import { FieldDialogComponent } from '../field-dialog/field-dialog.component';
     MatCardModule,
     MatIconModule,
     MatTableModule,
-    MatDialogModule
+    MatDialogModule,
+    MatExpansionModule
   ]
 })
 export class DashboardComponent implements OnInit {
@@ -27,6 +29,8 @@ export class DashboardComponent implements OnInit {
 
   private authService = inject(AuthService);
   private dialog = inject(MatDialog);
+  private cdr = inject(ChangeDetectorRef);
+  private router = inject(Router);
 
   ngOnInit(): void {
     this.loadCategories();
@@ -46,13 +50,11 @@ export class DashboardComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        if (category) {
-          // Редактирование категории
-          this.authService.updateCategory(category.id, result).subscribe(() => this.loadCategories());
-        } else {
-          // Создание новой категории
-          this.authService.createCategory(result).subscribe(() => this.loadCategories());
-        }
+        const action = category
+          ? this.authService.updateCategory(category.id, result)
+          : this.authService.createCategory(result);
+
+        action.subscribe(() => this.loadCategories());
       }
     });
   }
@@ -77,17 +79,7 @@ export class DashboardComponent implements OnInit {
       .catch(error => console.error("❌ Logout failed:", error));
   }
 
-  // Метод для открытия диалога добавления поля
-  openFieldDialog(categoryId: number) {
-    const dialogRef = this.dialog.open(FieldDialogComponent, {
-      width: '400px',
-      data: { categoryId }
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.authService.addFieldToCategory(categoryId, result).subscribe(() => this.loadCategories());
-      }
-    });
+  viewCategoryFields(categoryId: number) {
+    this.router.navigate(['/category', categoryId]);
   }
 }

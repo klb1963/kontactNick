@@ -6,7 +6,9 @@
       <!-- Name Column -->
       <ng-container matColumnDef="name">
         <th mat-header-cell *matHeaderCellDef> Name </th>
-        <td mat-cell *matCellDef="let category"> {{category.name}} </td>
+        <td mat-cell *matCellDef="let category">
+          {{ category.name }}
+        </td>
       </ng-container>
 
       <!-- Description Column -->
@@ -25,23 +27,21 @@
           <button mat-icon-button color="warn" (click)="deleteCategory(category.id)">
             <mat-icon>delete</mat-icon>
           </button>
-          <button mat-icon-button color="accent" (click)="openFieldDialog(category.id)">
-            <mat-icon>add</mat-icon> <!-- Иконка добавления поля -->
+          <button mat-icon-button color="accent" (click)="viewCategoryFields(category.id)">
+            <mat-icon>visibility</mat-icon>
           </button>
         </td>
       </ng-container>
 
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      <!-- Основные строки категорий -->
+      <tr mat-header-row *matHeaderRowDef="['name', 'description', 'actions']"></tr>
+      <tr mat-row *matRowDef="let category; columns: ['name', 'description', 'actions'];"></tr>
+
     </table>
   </mat-card-content>
-
-  <mat-card-actions>
-    <button mat-raised-button color="primary" (click)="openCategoryDialog()">+ Add Category</button>
-  </mat-card-actions>
 </mat-card>
 
-<!-- 🔴 Кнопка Logout ниже серой зоны -->
+<!-- 🔴 Logout Button -->
 <div style="margin-top: 20px; text-align: center;">
   <button mat-stroked-button color="warn" (click)="logout()">Logout</button>
 </div>

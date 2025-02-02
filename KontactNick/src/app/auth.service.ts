@@ -2,8 +2,9 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { catchError, Observable, of } from 'rxjs';
-import { map, tap, switchMap } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { map, tap, switchMap, catchError } from 'rxjs/operators';
+import { throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -56,7 +57,7 @@ export class AuthService {
   /** ✅ Проверка авторизации */
   public isLoggedIn(): Observable<boolean> {
     return this.getTokenFromServer().pipe(
-      switchMap(token => token ? this.checkAuthStatus() : of(false)),
+      map(token => !!token),
       catchError(() => of(false))
     );
   }
@@ -151,7 +152,57 @@ export class AuthService {
   }
 
   addFieldToCategory(categoryId: number, field: { name: string, fieldType: string, value: string }) {
-    return this.http.post(`http://localhost:8080/api/categories/${categoryId}/field`, field, { withCredentials: true });
+    console.log("🌐 Sending request to add field:", field); // Лог перед отправкой
+
+    return this.http.post(`http://localhost:8080/api/categories/${categoryId}/field`, field, {
+      withCredentials: true
+    }).pipe(
+      tap(response => console.log("✅ Field added successfully:", response)), // Лог успешного ответа
+      catchError(error => {
+        console.error("❌ Error adding field:", error); // Лог ошибки
+        return throwError(() => error); // Проброс ошибки для обработки в вызывающем методе
+      })
+    );
   }
+
+  getCategoryFields(categoryId: number) {
+
+    console.log("🌐 Sending request to fetch fields for category ID:", categoryId); // 🚀 Лог перед запросом
+
+    return this.http.get<any[]>(`http://localhost:8080/api/categories/${categoryId}/fields`, {
+      withCredentials: true
+    }).pipe(
+      tap(
+        fields => console.log("📤 Server response (fields received):", fields) // ✅ Успешный ответ от сервера
+      ),
+      catchError(error => {
+        console.error("❌ Error in getCategoryFields (HTTP Error):", error); // 🚨 Ошибка при запросе
+        console.warn("⚠️ Returning an empty array due to error."); // ⚠️ Предупреждение о возврате пустого массива
+        return of([]); // Возвращаем пустой массив, чтобы приложение не падало
+      })
+    );
+  }
+
+  public getCurrentUserEmail(): Observable<string | null> {
+    return this.getTokenFromServer().pipe(
+      map(token => {
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.email || payload.sub || null;
+          } catch (error) {
+            console.error('🚨 Error decoding token:', error);
+            return null;
+          }
+        }
+        return null;
+      }),
+      catchError(error => {
+        console.error('🚨 Error fetching user email:', error);
+        return of(null);
+      })
+    );
+  }
+
 
 }
