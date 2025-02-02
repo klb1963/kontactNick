@@ -44,7 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll() // ✅ Открываем только эндпоинты аутентификации
                         .requestMatchers("/api/public/**").permitAll() // ✅ Добавляем зону публичных API
                         .requestMatchers("/api/oauth2/profile").authenticated() // ✅ Требует аутентификации
-                        .requestMatchers("/api/categories").hasAuthority("ROLE_USER") // ✅ Требует роль
+                        .requestMatchers("/api/categories/**").hasAuthority("ROLE_USER")
                         .requestMatchers("/api/auth/token").authenticated() // ✅ Требует аутентификации
                         .anyRequest().authenticated() // ✅ Все остальные запросы требуют авторизации
                 )
