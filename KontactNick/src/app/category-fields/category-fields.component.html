@@ -1,11 +1,12 @@
 <mat-card>
-  <mat-card-title>📋 Fields for Category: {{ categoryName }}</mat-card-title> <!-- ✅ Имя категории -->
+  <mat-card-title>📋 Fields for Category: {{ categoryName }}</mat-card-title>
   <mat-card-content>
     <ul *ngIf="fields.length; else noFields">
       <li *ngFor="let field of fields">
         <strong>{{ field.name }}</strong> ({{ field.fieldType }}): {{ field.value }}
 
-        <button mat-icon-button color="primary" (click)="editField(categoryId, field)">
+        <!-- Исправлено: порядок аргументов -->
+        <button mat-icon-button color="primary" (click)="editField(field, categoryId)">
           <mat-icon>edit</mat-icon>
         </button>
 
