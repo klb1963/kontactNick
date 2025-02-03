@@ -1,5 +1,5 @@
 <mat-card>
-  <mat-card-title>📋 Fields for Category: {{ categoryName }}</mat-card-title>
+  <mat-card-title>📋 Fields for Category: {{ categoryName }}</mat-card-title> <!-- ✅ Имя категории -->
   <mat-card-content>
     <ul *ngIf="fields.length; else noFields">
       <li *ngFor="let field of fields">
@@ -24,5 +24,4 @@
   <div style="display: flex; justify-content: center; margin-top: 10px; margin-bottom: 20px;">
     <button mat-stroked-button color="primary" (click)="goBack()">🔙 Back to Categories</button>
   </div>
-
 </mat-card>
