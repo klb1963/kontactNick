@@ -65,15 +65,21 @@ export class CategoryFieldsComponent implements OnInit {
   }
 
   // ✅ Редактировать поле в категории
-  editField(field: any): void {
+  editField(field: any, categoryId: number): void {
     const dialogRef = this.dialog.open(FieldDialogComponent, {
       width: '400px',
-      data: { ...field, categoryId: this.categoryId }
+      data: {
+        id: field.id,
+        name: field.name,
+        fieldType: field.fieldType,
+        value: field.value
+      }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.authService.updateCategory(this.categoryId, result).subscribe(() => this.loadFields());
+        this.authService.updateField(categoryId, field.id, result)
+          .subscribe(() => this.loadFields());
       }
     });
   }

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -45,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/**").permitAll() // ✅ Добавляем зону публичных API
                         .requestMatchers("/api/oauth2/profile").authenticated() // ✅ Требует аутентификации
                         .requestMatchers("/api/categories/**").hasAuthority("ROLE_USER")
+                        .requestMatchers(HttpMethod.PUT, "/api/fields/**").authenticated() // ✅ разрешение на обновление полей
+                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**/fields/**").authenticated() // удаление полей
                         .requestMatchers("/api/auth/token").authenticated() // ✅ Требует аутентификации
                         .anyRequest().authenticated() // ✅ Все остальные запросы требуют авторизации
                 )

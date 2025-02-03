@@ -4,9 +4,11 @@
     <ul *ngIf="fields.length; else noFields">
       <li *ngFor="let field of fields">
         <strong>{{ field.name }}</strong> ({{ field.fieldType }}): {{ field.value }}
-        <button mat-icon-button color="primary" (click)="editField(field)">
+
+        <button mat-icon-button color="primary" (click)="editField(categoryId, field)">
           <mat-icon>edit</mat-icon>
         </button>
+
         <button mat-icon-button color="warn" (click)="deleteField(field.id)">
           <mat-icon>delete</mat-icon>
         </button>
