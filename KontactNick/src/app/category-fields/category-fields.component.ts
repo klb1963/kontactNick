@@ -1,12 +1,13 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../services/auth.service';
 import { MatDialog } from '@angular/material/dialog';
 import { FieldDialogComponent } from '../field-dialog/field-dialog.component';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { CategoryService } from '../services/category.service';
 
 @Component({
   selector: 'app-category-fields',
@@ -18,33 +19,52 @@ import { MatIconModule } from '@angular/material/icon';
 export class CategoryFieldsComponent implements OnInit {
   categoryId!: number;
   fields: any[] = [];
-  categoryName: string = ''; // ✅ Для хранения имени категории
+  categoryName: string = '';
 
   private authService = inject(AuthService);
+  private categoryService = inject(CategoryService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private dialog = inject(MatDialog);
 
   ngOnInit(): void {
     this.categoryId = Number(this.route.snapshot.paramMap.get('id'));
-    this.loadCategory(); // ✅ Загружаем информацию о категории
+    this.loadCategory();
     this.loadFields();
   }
 
   loadCategory(): void {
-    this.authService.getCategoryById(this.categoryId).subscribe(category => {
-      this.categoryName = category.name; // ✅ Устанавливаем имя категории
+    this.categoryService.getCategoryById(this.categoryId).subscribe({
+      next: (category) => {
+        this.categoryName = category.name;
+        console.log("✅ Category loaded:", category);
+      },
+      error: (err) => {
+        console.error("❌ Error loading category:", err);
+        if (err.status === 404) {
+          alert('Категория не найдена. Возможно, она была удалена.');
+          this.router.navigate(['/dashboard']);
+        }
+      }
     });
   }
 
   loadFields(): void {
-    this.authService.getCategoryFields(this.categoryId).subscribe(fields => {
-      console.log("📥 Refreshed fields:", fields); // Лог обновленных полей
-      this.fields = fields;
+    this.categoryService.getCategoryFields(this.categoryId).subscribe({
+      next: (fields) => {
+        console.log("📥 Refreshed fields:", fields);
+        this.fields = fields;
+      },
+      error: (err) => {
+        console.error("❌ Error loading fields:", err);
+        if (err.status === 404) {
+          alert('Поля не найдены. Возможно, категория была удалена.');
+          this.router.navigate(['/dashboard']);
+        }
+      }
     });
   }
 
-  // ✅ Добавить поле в категорию
   addField(): void {
     const dialogRef = this.dialog.open(FieldDialogComponent, {
       width: '400px',
@@ -53,10 +73,10 @@ export class CategoryFieldsComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.authService.addFieldToCategory(this.categoryId, result).subscribe({
+        this.categoryService.addFieldToCategory(this.categoryId, result).subscribe({
           next: () => {
             console.log("✅ Field added, refreshing fields...");
-            this.loadFields(); // 🔄 Загружаем обновленные данные
+            this.loadFields();
           },
           error: (err) => console.error("❌ Error adding field:", err)
         });
@@ -64,8 +84,12 @@ export class CategoryFieldsComponent implements OnInit {
     });
   }
 
-  // ✅ Редактировать поле в категории
   editField(field: any, categoryId: number): void {
+    if (!field || !field.id) {
+      console.warn('⚠️ Поле не найдено для редактирования.');
+      return;
+    }
+
     const dialogRef = this.dialog.open(FieldDialogComponent, {
       width: '400px',
       data: {
@@ -78,21 +102,35 @@ export class CategoryFieldsComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.authService.updateField(categoryId, field.id, result)
-          .subscribe(() => this.loadFields());
+        this.categoryService.updateField(categoryId, field.id, result)
+          .subscribe({
+            next: () => this.loadFields(),
+            error: (error) => {
+              console.error('❌ Ошибка при обновлении поля:', error);
+              if (error.status === 404) {
+                alert('Поле не найдено. Возможно, оно было удалено.');
+                this.loadFields();
+              }
+            }
+          });
       }
     });
   }
 
-  // ✅ Удалить поле из категории
   deleteField(fieldId: number): void {
-    if (confirm('Are you sure you want to delete this field?')) {
-      this.authService.deleteField(this.categoryId, fieldId).subscribe({
+    if (confirm('Вы уверены, что хотите удалить это поле?')) {
+      this.categoryService.deleteField(this.categoryId, fieldId).subscribe({
         next: () => {
           console.log(`✅ Field with ID ${fieldId} deleted.`);
-          this.loadFields();  // Обновление списка полей
+          this.loadFields();
         },
-        error: (err) => console.error("❌ Error deleting field:", err)
+        error: (err) => {
+          console.error("❌ Error deleting field:", err);
+          if (err.status === 404) {
+            alert('Поле или категория не найдены. Возможно, они были удалены.');
+            this.router.navigate(['/dashboard']);
+          }
+        }
       });
     }
   }

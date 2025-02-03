@@ -10,10 +10,12 @@ import kontactNick.repository.CategoryRepository;
 import kontactNick.repository.FieldRepository;
 import kontactNick.repository.UserRepository;
 import kontactNick.service.CategoryService;
+import kontactNick.service.FieldService;
 import kontactNick.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -35,6 +37,7 @@ public class CategoryController {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final FieldRepository fieldRepository;
+    private final FieldService fieldService;
 
     // ✅ Создание категории
     @PostMapping("/categories")
@@ -87,27 +90,19 @@ public class CategoryController {
 
     // ✅ Добавление одного поля в категорию (с проверкой владельца)
     @PostMapping("/categories/{categoryId}/field")
-    public ResponseEntity<String> addFieldToCategory(@PathVariable Long categoryId, @RequestBody FieldDto fieldRequest) {
+    public ResponseEntity<Field> addFieldToCategory(@PathVariable Long categoryId, @RequestBody FieldDto fieldRequest) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         log.debug("📌 Adding field to category ID: {} by user: {}", categoryId, email);
 
-        Category category = categoryRepository.findById(categoryId)
-                .filter(cat -> cat.getUser().getEmail().equals(email)) // Проверка владельца
-                .orElseThrow(() -> {
-                    log.warn("❌ Category {} not found or doesn't belong to user {}", categoryId, email);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found or access denied");
-                });
+        // Передаём данные в сервис для добавления поля
+        Field savedField = fieldService.addFieldToCategory(categoryId, fieldRequest, email);
 
-        Field field = new Field();
-        field.setName(fieldRequest.getName());
-        field.setFieldType(fieldRequest.getFieldType());
-        field.setValue(fieldRequest.getValue());
-        field.setCategory(category);
+        log.info("✅ Field '{}' added to category '{}'", savedField.getName(), savedField.getCategory().getName());
 
-        fieldRepository.save(field);
-        log.info("✅ Field '{}' added to category '{}'", field.getName(), category.getName());
-
-        return ResponseEntity.ok("Field added successfully");
+        return ResponseEntity
+                .ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(savedField); // Возвращаем сохранённое поле
     }
 
     // ✅ Обновление категории (с проверкой владельца)

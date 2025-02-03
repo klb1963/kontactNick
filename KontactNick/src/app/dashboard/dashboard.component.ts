@@ -4,10 +4,10 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { AuthService } from '../auth.service';
 import { CategoryDialogComponent } from '../category-dialog/category-dialog.component';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { Router } from '@angular/router';
+import { CategoryService } from '../services/category.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -27,7 +27,7 @@ export class DashboardComponent implements OnInit {
   categories: any[] = [];
   displayedColumns: string[] = ['name', 'description', 'actions'];
 
-  private authService = inject(AuthService);
+  private categoryService = inject(CategoryService);
   private dialog = inject(MatDialog);
   private cdr = inject(ChangeDetectorRef);
   private router = inject(Router);
@@ -37,8 +37,9 @@ export class DashboardComponent implements OnInit {
   }
 
   loadCategories() {
-    this.authService.getUserCategories().subscribe(categories => {
+    this.categoryService.getUserCategories().subscribe((categories: any[]) => {
       this.categories = categories;
+      this.cdr.detectChanges();
     });
   }
 
@@ -51,8 +52,8 @@ export class DashboardComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         const action = category
-          ? this.authService.updateCategory(category.id, result)
-          : this.authService.createCategory(result);
+          ? this.categoryService.updateCategory(category.id, result)
+          : this.categoryService.createCategory(result);
 
         action.subscribe(() => this.loadCategories());
       }
@@ -61,7 +62,7 @@ export class DashboardComponent implements OnInit {
 
   deleteCategory(id: number) {
     if (confirm('Are you sure you want to delete this category?')) {
-      this.authService.deleteCategory(id).subscribe(() => this.loadCategories());
+      this.categoryService.deleteCategory(id).subscribe(() => this.loadCategories());
     }
   }
 

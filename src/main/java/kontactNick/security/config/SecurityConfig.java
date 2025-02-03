@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 import static org.springframework.security.config.Customizer.withDefaults;
@@ -37,34 +38,31 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(withDefaults()) // ✅ Разрешаем CORS
-                .csrf(csrf -> csrf.disable()) // ✅ Отключаем CSRF (не нужен для API)
+                .cors(withDefaults())
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ Открытые эндпоинты
+                        .requestMatchers(CorsUtils::isPreFlightRequest).permitAll() // ✅ Разрешение pre-flight запросов
                         .requestMatchers("/", "/home").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll() // ✅ Открываем только эндпоинты аутентификации
-                        .requestMatchers("/api/public/**").permitAll() // ✅ Добавляем зону публичных API
-                        .requestMatchers("/api/oauth2/profile").authenticated() // ✅ Требует аутентификации
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/oauth2/profile").authenticated()
                         .requestMatchers("/api/categories/**").hasAuthority("ROLE_USER")
-                        .requestMatchers(HttpMethod.PUT, "/api/fields/**").authenticated() // ✅ разрешение на обновление полей
-                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**/fields/**").authenticated() // удаление полей
-                        .requestMatchers("/api/auth/token").authenticated() // ✅ Требует аутентификации
-                        .anyRequest().authenticated() // ✅ Все остальные запросы требуют авторизации
+                        .requestMatchers(HttpMethod.PUT, "/api/fields/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**/fields/**").authenticated()
+                        .requestMatchers("/api/auth/token").authenticated()
+                        .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // ✅ Stateless аутентификация (JWT)
-                .oauth2Login(oauth2 -> oauth2
-                        .successHandler(customAuthenticationSuccessHandler) // ✅ Используем кастомный successHandler
-                )
-                .logout(logout -> logout
-                        .logoutSuccessUrl("/").permitAll() // ✅ Разрешаем выход
-                )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // ✅ Добавляем JWT фильтр перед стандартной аутентификацией
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .oauth2Login(oauth2 -> oauth2.successHandler(customAuthenticationSuccessHandler))
+                .logout(logout -> logout.logoutSuccessUrl("/").permitAll())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(exc -> exc
                         .authenticationEntryPoint((request, response, authException) -> {
                             log.warn("❌ Unauthorized request to {}", request.getRequestURI());
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.setContentType("application/json");
-                            response.setHeader("WWW-Authenticate", "Bearer realm=\"Access to API\""); // 🔥 Добавлен заголовок
+                            response.setHeader("Access-Control-Allow-Origin", "http://localhost:4200"); // ✅ Добавление заголовка
+                            response.setHeader("Access-Control-Allow-Credentials", "true");             // ✅ Поддержка credentials
                             response.getWriter().write("{\"error\": \"Unauthorized\"}");
                         })
                 );
@@ -76,9 +74,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:4200"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")); // ✅ Расширен список методов
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowCredentials(true);
-        configuration.setAllowedHeaders(List.of("Authorization", "Cache-Control", "Content-Type"));
+        configuration.setAllowedHeaders(List.of(
+                "Authorization", "Cache-Control", "Content-Type", "X-Requested-With", "Accept"
+        )); // ✅ Добавлены заголовки
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
