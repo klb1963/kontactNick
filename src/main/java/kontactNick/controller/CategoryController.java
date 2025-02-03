@@ -59,6 +59,14 @@ public class CategoryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(savedCategory);
     }
 
+    // ✅ Получение категории
+    @GetMapping("/{id}")
+    public ResponseEntity<CategoryDto> getCategoryById(@PathVariable Long id) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+        return ResponseEntity.ok(new CategoryDto(category.getId(), category.getName(), category.getDescription()));
+    }
+
     // ✅ Получение всех категорий пользователя
     @GetMapping
     public ResponseEntity<List<Category>> getCategories() {
@@ -140,7 +148,6 @@ public class CategoryController {
     }
 
     // ✅ Получение полей категории с проверкой владельца
-    // ✅ Получение полей категории с проверкой владельца
     @GetMapping("/{categoryId}/fields")
     public ResponseEntity<List<FieldDto>> getFieldsByCategory(@PathVariable Long categoryId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -184,5 +191,19 @@ public class CategoryController {
 
         log.info("✅ Found {} fields for category '{}' (ID: {})", fields.size(), category.getName(), categoryId);
         return ResponseEntity.ok(fields);
+    }
+
+    // Удаление поля из категории
+    @DeleteMapping("/{categoryId}/fields/{fieldId}")
+    public ResponseEntity<Void> deleteField(@PathVariable Long categoryId, @PathVariable Long fieldId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+
+        Field field = fieldRepository.findById(fieldId)
+                .filter(f -> f.getCategory().getId().equals(categoryId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Field not found or doesn't belong to category"));
+
+        fieldRepository.delete(field);
+        return ResponseEntity.noContent().build();
     }
 }

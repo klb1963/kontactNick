@@ -18,7 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 export class CategoryFieldsComponent implements OnInit {
   categoryId!: number;
   fields: any[] = [];
-  categoryName: string = '';
+  categoryName: string = ''; // ✅ Для хранения имени категории
 
   private authService = inject(AuthService);
   private route = inject(ActivatedRoute);
@@ -27,7 +27,14 @@ export class CategoryFieldsComponent implements OnInit {
 
   ngOnInit(): void {
     this.categoryId = Number(this.route.snapshot.paramMap.get('id'));
+    this.loadCategory(); // ✅ Загружаем информацию о категории
     this.loadFields();
+  }
+
+  loadCategory(): void {
+    this.authService.getCategoryById(this.categoryId).subscribe(category => {
+      this.categoryName = category.name; // ✅ Устанавливаем имя категории
+    });
   }
 
   loadFields(): void {
@@ -37,6 +44,7 @@ export class CategoryFieldsComponent implements OnInit {
     });
   }
 
+  // ✅ Добавить поле в категорию
   addField(): void {
     const dialogRef = this.dialog.open(FieldDialogComponent, {
       width: '400px',
@@ -56,6 +64,7 @@ export class CategoryFieldsComponent implements OnInit {
     });
   }
 
+  // ✅ Редактировать поле в категории
   editField(field: any): void {
     const dialogRef = this.dialog.open(FieldDialogComponent, {
       width: '400px',
@@ -69,9 +78,16 @@ export class CategoryFieldsComponent implements OnInit {
     });
   }
 
+  // ✅ Удалить поле из категории
   deleteField(fieldId: number): void {
     if (confirm('Are you sure you want to delete this field?')) {
-      this.authService.deleteCategory(fieldId).subscribe(() => this.loadFields());
+      this.authService.deleteField(this.categoryId, fieldId).subscribe({
+        next: () => {
+          console.log(`✅ Field with ID ${fieldId} deleted.`);
+          this.loadFields();  // Обновление списка полей
+        },
+        error: (err) => console.error("❌ Error deleting field:", err)
+      });
     }
   }
 

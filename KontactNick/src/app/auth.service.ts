@@ -151,6 +151,12 @@ export class AuthService {
     return this.http.delete(`http://localhost:8080/api/categories/${categoryId}`, { withCredentials: true });
   }
 
+  getCategoryById(categoryId: number) {
+    return this.http.get<any>(`http://localhost:8080/api/categories/${categoryId}`, {
+      withCredentials: true
+    });
+  }
+
   addFieldToCategory(categoryId: number, field: { name: string, fieldType: string, value: string }) {
     console.log("🌐 Sending request to add field:", field); // Лог перед отправкой
 
@@ -183,6 +189,10 @@ export class AuthService {
     );
   }
 
+  deleteField(categoryId: number, fieldId: number) {
+    return this.http.delete(`http://localhost:8080/api/categories/${categoryId}/fields/${fieldId}`, { withCredentials: true });
+  }
+
   public getCurrentUserEmail(): Observable<string | null> {
     return this.getTokenFromServer().pipe(
       map(token => {
@@ -203,6 +213,7 @@ export class AuthService {
       })
     );
   }
+
 
 
 }
