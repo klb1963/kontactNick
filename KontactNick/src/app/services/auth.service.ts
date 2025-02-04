@@ -9,7 +9,7 @@ import { map, tap, switchMap, catchError } from 'rxjs/operators';
   providedIn: 'root'
 })
 export class AuthService {
-  private baseUrl = 'http://localhost:8080/api';
+  private baseUrl = 'http://localhost:8080/api'; // ✅ Используем только baseUrl
 
   constructor(
     private http: HttpClient,
@@ -112,5 +112,21 @@ export class AuthService {
         return of(false);
       })
     );
+  }
+
+  /** ✅ Получение user profile */
+  getUserProfile(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/profile`, { withCredentials: true }).pipe(
+      tap(profile => console.log("✅ User profile loaded:", profile)),
+      catchError(error => {
+        console.error("❌ Error fetching user profile:", error);
+        return of(null); // ✅ Возвращаем null, если ошибка
+      })
+    );
+  }
+
+  /** ✅ Обновление ника */
+  updateNick(newNick: string): Observable<any> {
+    return this.http.put(`${this.baseUrl}/profile/nick`, { nick: newNick }, { withCredentials: true });
   }
 }

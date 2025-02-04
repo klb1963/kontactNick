@@ -41,15 +41,12 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(CorsUtils::isPreFlightRequest).permitAll() // ✅ Разрешение pre-flight запросов
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()  // ✅ Разрешить preflight-запросы
                         .requestMatchers("/", "/home").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/api/oauth2/profile").authenticated()
+                        .requestMatchers("/api/profile").authenticated()        // ✅ Исправлено для профиля
                         .requestMatchers("/api/categories/**").hasAuthority("ROLE_USER")
-                        .requestMatchers(HttpMethod.PUT, "/api/fields/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**/fields/**").authenticated()
-                        .requestMatchers("/api/auth/token").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -61,8 +58,6 @@ public class SecurityConfig {
                             log.warn("❌ Unauthorized request to {}", request.getRequestURI());
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.setContentType("application/json");
-                            response.setHeader("Access-Control-Allow-Origin", "http://localhost:4200"); // ✅ Добавление заголовка
-                            response.setHeader("Access-Control-Allow-Credentials", "true");             // ✅ Поддержка credentials
                             response.getWriter().write("{\"error\": \"Unauthorized\"}");
                         })
                 );
@@ -74,13 +69,50 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:4200"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowCredentials(true);
-        configuration.setAllowedHeaders(List.of(
-                "Authorization", "Cache-Control", "Content-Type", "X-Requested-With", "Accept"
-        )); // ✅ Добавлены заголовки
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")); // ✅ Добавлены OPTIONS
+        configuration.setAllowCredentials(true); // ✅ Разрешение для передачи куков
+        configuration.setAllowedHeaders(List.of("*")); // ✅ Разрешение всех заголовков
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }
+
+
+//
+//@Bean
+//public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+//    http
+//            .cors(withDefaults())
+//            .csrf(csrf -> csrf.disable())
+//            .authorizeHttpRequests(auth -> auth
+//                    .requestMatchers(CorsUtils::isPreFlightRequest).permitAll() // ✅ Разрешение pre-flight запросов
+//                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()  // ✅ Разрешаем все OPTIONS-запросы
+//                    .requestMatchers("/", "/home").permitAll()
+//                    .requestMatchers("/api/auth/**").permitAll()
+//                    .requestMatchers("/api/public/**").permitAll()
+//                    .requestMatchers("/api/oauth2/profile").authenticated()
+//                    .requestMatchers("/api/categories/**").hasAuthority("ROLE_USER")
+//                    .requestMatchers(HttpMethod.PUT, "/api/fields/**").authenticated()
+//                    .requestMatchers(HttpMethod.DELETE, "/api/categories/**/fields/**").authenticated()
+//                    .requestMatchers("/api/auth/token").authenticated()
+//                    .anyRequest().authenticated()
+//            )
+//            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+//            .oauth2Login(oauth2 -> oauth2.successHandler(customAuthenticationSuccessHandler))
+//            .logout(logout -> logout.logoutSuccessUrl("/").permitAll())
+//            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+//            .exceptionHandling(exc -> exc
+//                    .authenticationEntryPoint((request, response, authException) -> {
+//                        log.warn("❌ Unauthorized request to {}", request.getRequestURI());
+//                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+//                        response.setContentType("application/json");
+//                        response.setHeader("Access-Control-Allow-Origin", "http://localhost:4200"); // ✅ Добавление заголовка
+//                        response.setHeader("Access-Control-Allow-Credentials", "true");             // ✅ Поддержка credentials
+//                        response.getWriter().write("{\"error\": \"Unauthorized\"}");
+//                    })
+//            );
+//
+//    return http.build();
+//}

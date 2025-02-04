@@ -20,6 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 
@@ -98,4 +99,39 @@ public class ApiController {
                 "role", user.getRole() != null ? user.getRole() : "USER"
         ));
     }
+
+    // ✅ Проверка доступности nick
+    @GetMapping("/check-nick")
+    public ResponseEntity<?> checkNickAvailability(@RequestParam String nick) {
+        boolean isAvailable = userRepository.findByNick(nick).isEmpty();
+        log.info("🔍 Проверка nick '{}': {}", nick, isAvailable ? "доступен" : "занят");
+        return ResponseEntity.ok(Map.of("available", isAvailable));
+    }
+
+    // ✅ Обновление nick текущего пользователя
+    @PutMapping("/profile/nick")
+    public ResponseEntity<?> updateNick(@AuthenticationPrincipal UserDetails userDetails,
+                                        @RequestBody Map<String, String> request) {
+        String newNick = request.get("nick");
+
+        if (newNick == null || newNick.isBlank()) {
+            log.warn("❌ Попытка сохранить пустой nick");
+            return ResponseEntity.badRequest().body(Map.of("error", "Nick cannot be empty"));
+        }
+
+        if (userRepository.findByNick(newNick).isPresent()) {
+            log.warn("❌ Nick '{}' уже занят", newNick);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Nick already taken"));
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        user.setNick(newNick);
+        userRepository.save(user);
+
+        log.info("✅ Nick пользователя '{}' обновлен на '{}'", user.getEmail(), newNick);
+        return ResponseEntity.ok(Map.of("message", "Nick updated successfully"));
+    }
+
 }

@@ -8,6 +8,10 @@ import { CategoryDialogComponent } from '../category-dialog/category-dialog.comp
 import { MatExpansionModule } from '@angular/material/expansion';
 import { Router } from '@angular/router';
 import { CategoryService } from '../services/category.service';
+import { AuthService } from '../services/auth.service';
+import { FormsModule } from '@angular/forms';
+import { MatListModule } from '@angular/material/list'; // ✅ Исправленный импорт
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,27 +24,98 @@ import { CategoryService } from '../services/category.service';
     MatIconModule,
     MatTableModule,
     MatDialogModule,
-    MatExpansionModule
+    MatExpansionModule,
+    FormsModule,
+    MatListModule, // ✅ Подключение MatListModule
+    MatButtonModule
   ]
 })
 export class DashboardComponent implements OnInit {
-  categories: any[] = [];
+  categories: any[] = []; // ✅ Инициализация массива
   displayedColumns: string[] = ['name', 'description', 'actions'];
+  userProfile: any;
+
+  isEditingNick = false;
+  editableNick = '';
+  nickError = '';
 
   private categoryService = inject(CategoryService);
   private dialog = inject(MatDialog);
   private cdr = inject(ChangeDetectorRef);
   private router = inject(Router);
+  private authService = inject(AuthService);
 
   ngOnInit(): void {
-    this.loadCategories();
+    this.authService.isLoggedIn().subscribe(isAuth => {
+      if (isAuth) {
+        this.loadCategories();
+        this.loadUserProfile();
+      } else {
+        console.warn("❌ Пользователь не аутентифицирован. Запросы к API не выполняем.");
+      }
+    });
   }
 
   loadCategories() {
-    this.categoryService.getUserCategories().subscribe((categories: any[]) => {
-      this.categories = categories;
-      this.cdr.detectChanges();
+    this.categoryService.getUserCategories().subscribe({
+      next: (categories: any[]) => {
+        this.categories = categories || []; // ✅ Предотвращение undefined
+      },
+      error: (error) => {
+        console.error("❌ Error fetching categories:", error);
+        this.categories = []; // ✅ Установка пустого массива при ошибке
+      }
     });
+  }
+
+  loadUserProfile(): void {
+    this.authService.getUserProfile().subscribe(
+      (profile) => {
+        if (profile) {
+          this.userProfile = profile;
+          console.log("✅ User profile loaded:", profile);
+        } else {
+          console.warn("⚠️ Профиль не загружен");
+        }
+      },
+      (error) => {
+        console.error("❌ Error fetching user profile:", error);
+      }
+    );
+  }
+
+  editNick(): void {
+    this.isEditingNick = true;
+    this.editableNick = this.userProfile.nick;
+    this.nickError = '';
+  }
+
+  saveNick(): void {
+    if (this.editableNick.trim() === '') {
+      this.nickError = 'Nick cannot be empty.';
+      return;
+    }
+
+    this.authService.updateNick(this.editableNick).subscribe({
+      next: (response: any) => {
+        this.userProfile.nick = this.editableNick;
+        this.isEditingNick = false;
+        this.nickError = '';
+      },
+      error: (error) => {
+        if (error.status === 400 && error.error.message === 'Nick already exists') {
+          this.nickError = 'This nick is already taken. Please choose another.';
+        } else {
+          this.nickError = 'An unexpected error occurred.';
+        }
+      }
+    });
+  }
+
+  cancelEdit(): void {
+    this.isEditingNick = false;
+    this.editableNick = this.userProfile.nick;
+    this.nickError = '';
   }
 
   openCategoryDialog(category: any = null) {

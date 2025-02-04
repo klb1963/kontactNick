@@ -1,0 +1,5 @@
+mat-dialog-title {
+  margin-bottom: 10px;  /* Увеличивает отступ снизу заголовка */
+  font-size: 20px;       /* Для улучшения читаемости */
+  font-weight: bold;     /* Подчеркнёт заголовок */
+}
