@@ -78,11 +78,11 @@
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef>Actions</th>
         <td mat-cell *matCellDef="let category">
-          <button mat-raised-button class="field-action-btn" (click)="openCategoryDialog(category)">
-            ✏️ Edit
-          </button>
           <button mat-raised-button class="field-action-btn" (click)="viewCategoryFields(category.id)">
             👀 View
+          </button>
+          <button mat-raised-button class="field-action-btn" (click)="openCategoryDialog(category)">
+            ✏️ Edit
           </button>
           <button mat-raised-button class="field-action-btn" (click)="deleteCategory(category.id)">
             🗑️ Delete

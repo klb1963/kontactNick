@@ -1,0 +1,64 @@
+/* add-contact.component.css */
+
+/* ✅ Основной стиль формы */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+  margin: auto;
+  padding-top: 20px; /* Добавляем отступ сверху */
+}
+
+/* ✅ Заголовки полей */
+label {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* ✅ Поля ввода */
+input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ✅ Отступ для первого поля формы */
+.form-group:first-child {
+  margin-top: 16px;  /* Увеличенный отступ для верхнего поля */
+}
+
+/* ✅ Кнопки */
+button {
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  background-color: #1976d2;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  min-width: 80px;
+}
+
+/* ✅ Ховер-эффект для кнопок */
+button:hover {
+  background-color: #1565c0;
+}
+
+/* ✅ Красная кнопка для Cancel */
+button[type="button"] {
+  background-color: #f44336;
+}
+
+button[type="button"]:hover {
+  background-color: #d32f2f;
+}
+
+/* ✅ Стиль для кнопок действия */
+mat-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px; /* Отступ между кнопками */
+}
