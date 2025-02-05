@@ -1,6 +1,6 @@
-<h2 mat-dialog-title>{{ isEditMode ? 'Edit Field' : 'Add Field' }}</h2>
+<h2 mat-dialog-title class="custom-dialog-title">{{ isEditMode ? 'Edit Field' : 'Add Field' }}</h2>
 
-<mat-dialog-content>
+<mat-dialog-content class="custom-dialog-content">
   <mat-form-field appearance="outline" style="width: 100%;">
     <mat-label>Field Name*</mat-label>
     <input matInput [(ngModel)]="fieldName" required />
@@ -17,7 +17,7 @@
 
   <mat-form-field appearance="outline" style="width: 100%;">
     <mat-label>Field Value</mat-label>
-    <input matInput [(ngModel)]="fieldValue" />
+    <input matInput [(ngModel)]="fieldValue" placeholder="Значение поля" />
   </mat-form-field>
 </mat-dialog-content>
 

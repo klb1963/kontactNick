@@ -28,7 +28,7 @@ public class UserService {
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
-    // register new user
+    // 👨register new user
     public void register(UserDto userDto) {
         if (userRepository.existsByEmail(userDto.getEmail())) {
             throw new IllegalArgumentException("Email is already in use");
@@ -44,7 +44,7 @@ public class UserService {
         log.info("✅ User registered successfully: {}", user.getEmail());
     }
 
-    // user authentication
+    // ✅ user authentication
     public String authenticate(String email, String password) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
@@ -62,7 +62,7 @@ public class UserService {
         return token;
     }
 
-    // save or update user
+    // 💾save or update user
     @Transactional
     public User saveOrUpdateUser(String email, String nick, String avatarUrl) {
 

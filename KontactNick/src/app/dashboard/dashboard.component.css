@@ -1,27 +1,63 @@
-/* ✅ Отступы вокруг блока Categories */
+<!-- ✅ Стили -->
+ .profile-card {
+   margin-bottom: 20px;
+   margin-left: 20px;
+   padding: 16px;
+   background-color: #f9f9f9;
+   border-radius: 8px;
+   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+ }
+
+.profile-content {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  margin-left: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  background-size: cover;
+  background-position: center;
+}
+
+.user-info {
+  margin-left: 40px;
+}
+
+/* ✅ Кнопка добавления категории */
+.add-category button {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s;
+  margin-top: 30px;
+  margin-bottom: 30px;
+  margin-left: 20px;
+}
+
+.add-category button:hover {
+  background-color: #0056b3;
+}
+
 .categories-card {
-  margin: 30px 0; /* Увеличиваем отступы сверху и снизу */
-  padding: 20px;  /* Добавляем внутренние отступы */
-  background-color: #f9f9f9; /* Лёгкий фон для визуального разделения */
-  border-radius: 8px; /* Скругление углов */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Мягкая тень для акцента */
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* ✅ Заголовок Categories */
-.mat-card-title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 16px; /* Отступ под заголовком */
-}
-
-/* ✅ Таблица */
-table {
+.categories-table {
   width: 100%;
   border-collapse: collapse;
 }
 
 th, td {
-  padding: 12px; /* Увеличенный внутренний отступ */
+  padding: 12px;
   text-align: left;
   border-bottom: 1px solid #ddd;
 }
@@ -31,12 +67,32 @@ th {
   font-weight: bold;
 }
 
-/* ✅ Кнопки */
-button {
-  cursor: pointer;
-  margin-right: 8px; /* Расстояние между кнопками */
+.logout-button {
+  text-align: center;
+  margin-top: 20px;
 }
 
-button:last-child {
-  margin-right: 0; /* Убираем отступ у последней кнопки */
+.error-message {
+  color: red;
+  font-size: 12px;
+}
+
+/* ✅ Кнопки для действий с категориями */
+.field-action-btn {
+  cursor: pointer;
+  margin-right: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #1976d2; /* Основной цвет */
+  color: white;
+  transition: background-color 0.3s ease;
+}
+
+.field-action-btn:hover {
+  background-color: #1565c0; /* Цвет при наведении */
+}
+
+.field-action-btn:last-child {
+  margin-right: 0;
 }

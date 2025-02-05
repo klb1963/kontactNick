@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import {Component, Inject, ViewEncapsulation} from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -12,6 +12,8 @@ import { MatSelectModule } from '@angular/material/select';
   standalone: true,
   templateUrl: './field-dialog.component.html',
   styleUrls: ['./field-dialog.component.css'],
+  encapsulation: ViewEncapsulation.None,  // ✅ Отключает инкапсуляцию стилей
+
   imports: [
     CommonModule,
     FormsModule,
