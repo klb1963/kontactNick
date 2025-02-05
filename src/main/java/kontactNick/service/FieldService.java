@@ -20,6 +20,7 @@ public class FieldService {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    // 📔add field to category
     public Field addFieldToCategory(Long categoryId, FieldDto fieldRequest, String userEmail) {
         Category category = categoryRepository.findById(categoryId)
                 .filter(cat -> cat.getUser().getEmail().equals(userEmail)) // Проверка владельца

@@ -1,1 +1,78 @@
+/* ✅ Общий контейнер для полей */
+.fields-card {
+  margin: 30px 0;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
 
+/* ✅ Заголовок для полей */
+.fields-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  color: #333;
+}
+
+/* ✅ Таблица для полей */
+.fields-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.fields-table th,
+.fields-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.fields-table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+  color: #444;
+}
+
+/* ✅ Стиль для значений полей */
+.field-value {
+  font-style: italic;
+  color: #555;
+}
+
+/* ✅ Кнопки для действий с полями */
+.field-action-btn {
+  cursor: pointer;
+  margin-right: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #1976d2; /* Основной цвет */
+  color: white;
+  transition: background-color 0.3s ease;
+}
+
+.field-action-btn:hover {
+  background-color: #1565c0; /* Цвет при наведении */
+}
+
+.field-action-btn:last-child {
+  margin-right: 0;
+}
+
+/* ✅ Кнопка "Add Field" */
+.add-field-btn {
+  margin: 20px 0;
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.add-field-btn:hover {
+  background-color: #388e3c;
+}

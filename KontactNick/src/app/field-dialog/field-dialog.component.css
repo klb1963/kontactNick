@@ -1,5 +1,6 @@
-mat-dialog-title {
-  margin-bottom: 10px;  /* Увеличивает отступ снизу заголовка */
-  font-size: 20px;       /* Для улучшения читаемости */
-  font-weight: bold;     /* Подчеркнёт заголовок */
+::ng-deep .mat-mdc-dialog-container .mat-mdc-dialog-title {
+  margin-bottom: 20px !important;  /* Отступ снизу */
+  margin-left: 10px !important;    /* Отступ слева */
+  font-size: 20px !important;      /* Размер шрифта */
+  font-weight: bold !important;    /* Жирный шрифт */
 }

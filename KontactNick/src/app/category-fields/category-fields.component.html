@@ -1,29 +1,44 @@
-<mat-card>
-  <mat-card-title>📋 Fields for Category: {{ categoryName }}</mat-card-title>
+<mat-card class="fields-card">
+  <h2 class="fields-title">📋 Fields for Category: {{ categoryName }}</h2>
+
   <mat-card-content>
-    <ul *ngIf="fields.length; else noFields">
-      <li *ngFor="let field of fields">
-        <strong>{{ field.name }}</strong> ({{ field.fieldType }}): {{ field.value }}
+    <table class="fields-table" *ngIf="fields.length; else noFields">
+      <thead>
+      <tr>
+        <th>Field Name</th>
+        <th>Field Type</th>
+        <th>Field Value</th>
+        <th>Actions</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr *ngFor="let field of fields">
+        <td>{{ field.name }}</td>
+        <td>{{ field.fieldType }}</td>
+        <td class="field-value">{{ field.value }}</td>
+        <td>
+          <button class="field-action-btn" (click)="editField(field, categoryId)">
+            ✏️ Edit
+          </button>
+          <button class="field-action-btn" (click)="deleteField(field.id)">
+            🗑️ Delete
+          </button>
+        </td>
+      </tr>
+      </tbody>
+    </table>
 
-        <!-- Исправлено: порядок аргументов -->
-        <button mat-icon-button color="primary" (click)="editField(field, categoryId)">
-          <mat-icon>edit</mat-icon>
-        </button>
-
-        <button mat-icon-button color="warn" (click)="deleteField(field.id)">
-          <mat-icon>delete</mat-icon>
-        </button>
-      </li>
-    </ul>
     <ng-template #noFields>
       <em>No fields found for this category.</em>
     </ng-template>
   </mat-card-content>
 
-  <div style="margin: 20px 0;">
-    <button mat-stroked-button color="accent" (click)="addField()">➕ Add Field</button>
+  <!-- ✅ Кнопка для добавления поля -->
+  <div style="margin: 20px 0; text-align: left;">
+    <button class="add-field-btn" (click)="addField()">➕ Add Field</button>
   </div>
 
+  <!-- ✅ Кнопка для возврата к категориям -->
   <div style="display: flex; justify-content: center; margin-top: 10px; margin-bottom: 20px;">
     <button mat-stroked-button color="primary" (click)="goBack()">🔙 Back to Categories</button>
   </div>

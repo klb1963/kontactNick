@@ -2,3 +2,23 @@
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+/* ✅ Заголовок с дополнительным отступом */
+.custom-dialog-title {
+  margin: 20px 0 10px 20px !important;   /* Отступ сверху и слева */
+  padding-top: 10px !important;          /* Внутренний отступ сверху */
+  font-size: 20px !important;            /* Размер шрифта */
+  font-weight: bold !important;          /* Жирный шрифт */
+  line-height: 1.5 !important;           /* Высота строки */
+}
+
+/* ✅ Увеличиваем отступы для содержимого */
+.custom-dialog-content {
+  padding-top: 20px !important;          /* Отступ сверху */
+}
+
+/* ✅ Настройка контейнера диалога для предотвращения обрезания */
+.mat-mdc-dialog-container {
+  padding-top: 20px !important;          /* Внутренний отступ сверху */
+  overflow: visible !important;          /* Избегаем обрезания содержимого */
+}

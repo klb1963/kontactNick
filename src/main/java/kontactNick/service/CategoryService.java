@@ -14,6 +14,7 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
 
+        // 📖получить категории пользователя
         public List<Category> getCategoriesByUserEmail(String email) {
             return categoryRepository.findByUser_Email(email);
     }
