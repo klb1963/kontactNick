@@ -1,5 +1,12 @@
+<!-- category-fields.component.html -->
+
 <mat-card class="fields-card">
   <h2 class="fields-title">📋 Fields for Category: {{ categoryName }}</h2>
+
+  <!-- ✅ Кнопки для добавления поля и контакта -->
+  <div style="margin: 20px 0; display: flex; gap: 10px;">
+    <button class="add-field-btn" (click)="addField()">➕ Add Field</button>
+  </div>
 
   <mat-card-content>
     <table class="fields-table" *ngIf="fields.length; else noFields">
@@ -15,14 +22,10 @@
       <tr *ngFor="let field of fields">
         <td>{{ field.name }}</td>
         <td>{{ field.fieldType }}</td>
-        <td class="field-value">{{ field.value }}</td>
+        <td>{{ field.value }}</td>
         <td>
-          <button class="field-action-btn" (click)="editField(field, categoryId)">
-            ✏️ Edit
-          </button>
-          <button class="field-action-btn" (click)="deleteField(field.id)">
-            🗑️ Delete
-          </button>
+          <button class="field-action-btn" (click)="editField(field, categoryId)">✏️ Edit</button>
+          <button class="field-action-btn" (click)="deleteField(field.id)">🗑️ Delete</button>
         </td>
       </tr>
       </tbody>
@@ -33,9 +36,9 @@
     </ng-template>
   </mat-card-content>
 
-  <!-- ✅ Кнопка для добавления поля -->
-  <div style="margin: 20px 0; text-align: left;">
-    <button class="add-field-btn" (click)="addField()">➕ Add Field</button>
+  <!-- ✅ Кнопки для добавления поля и контакта -->
+  <div style="margin: 20px 0; display: flex; gap: 10px;">
+    <button class="add-contact-btn" (click)="addContact(categoryId)">➕ Add Contact</button>
   </div>
 
   <!-- ✅ Кнопка для возврата к категориям -->

@@ -1,0 +1,34 @@
+<h2 mat-dialog-title>➕ Add New Contact</h2>
+
+<mat-dialog-content>
+  <!-- Динамическая форма на основе полей категории -->
+  <form #contactForm="ngForm">
+    <div *ngFor="let field of fields" class="form-group">
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>{{ field.name }}</mat-label>
+
+        <!-- Динамический рендеринг полей в зависимости от типа -->
+
+        <input *ngIf="field.fieldType === 'text'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="text" required [ngModelOptions]="{standalone: true}" />
+
+        <input *ngIf="field.fieldType === 'number'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="number" required [ngModelOptions]="{standalone: true}" />
+
+        <input *ngIf="field.fieldType === 'email'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="email" required [ngModelOptions]="{standalone: true}" />
+
+      </mat-form-field>
+    </div>
+
+    <!-- Проверка, если нет полей -->
+    <div *ngIf="fields.length === 0" style="color: gray; text-align: center; margin: 10px 0;">
+      No fields defined for this category.
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="close()">Cancel</button>
+  <button mat-raised-button
+          color="primary"
+          (click)="save()"
+          [disabled]="!contactForm.form.valid">Save</button>
+</mat-dialog-actions>

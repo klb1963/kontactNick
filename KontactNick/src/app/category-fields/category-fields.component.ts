@@ -8,6 +8,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { CategoryService } from '../services/category.service';
+import { AddContactDialogComponent } from '../add-contact/add-contact.component';
 
 @Component({
   selector: 'app-category-fields',
@@ -28,9 +29,16 @@ export class CategoryFieldsComponent implements OnInit {
   private dialog = inject(MatDialog);
 
   ngOnInit(): void {
-    this.categoryId = Number(this.route.snapshot.paramMap.get('id'));
-    this.loadCategory();
-    this.loadFields();
+    this.authService.isLoggedIn().subscribe(isAuth => {
+      if (isAuth) {
+        this.categoryId = Number(this.route.snapshot.paramMap.get('id'));
+        this.loadCategory();
+        this.loadFields();
+      } else {
+        console.warn("❌ Пользователь не аутентифицирован. Перенаправление на страницу входа.");
+        this.router.navigate(['/login']);  // ✅ Перенаправление на страницу входа
+      }
+    });
   }
 
   loadCategory(): void {
@@ -138,4 +146,18 @@ export class CategoryFieldsComponent implements OnInit {
   goBack(): void {
     this.router.navigate(['/dashboard']);
   }
+
+  addContact(categoryId: number): void {
+    const dialogRef = this.dialog.open(AddContactDialogComponent, {
+      width: '400px',
+      data: { categoryId: categoryId }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        console.log('✅ Contact added:', result);
+      }
+    });
+  }
+
 }
