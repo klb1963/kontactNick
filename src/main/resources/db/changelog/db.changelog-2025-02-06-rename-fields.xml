@@ -1,0 +1,12 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
+
+    <changeSet id="2025-02-06-rename-fields" author="leonidk">
+        <renameColumn tableName="contact_log" oldColumnName="current_user_nick" newColumnName="user_nick" columnDataType="VARCHAR(255)"/>
+        <renameColumn tableName="contact_log" oldColumnName="added_user_nick" newColumnName="contact_nick" columnDataType="VARCHAR(255)"/>
+    </changeSet>
+
+</databaseChangeLog>
