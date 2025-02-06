@@ -3,12 +3,21 @@
 <mat-dialog-content>
   <!-- Динамическая форма на основе полей категории -->
   <form #contactForm="ngForm">
+
+    <!-- Поле для ввода ника (обязательное) -->
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Nick (User to add)</mat-label>
+      <input matInput [(ngModel)]="contactData.nick" name="nick" required />
+    </mat-form-field>
+
+    <!-- Скрытое поле с ником текущего пользователя -->
+    <input type="hidden" [(ngModel)]="contactData.currentUserNick" name="currentUserNick" />
+
     <div *ngFor="let field of fields" class="form-group">
       <mat-form-field appearance="outline" style="width: 100%;">
         <mat-label>{{ field.name }}</mat-label>
 
         <!-- Динамический рендеринг полей в зависимости от типа -->
-
         <input *ngIf="field.fieldType === 'text'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="text" required [ngModelOptions]="{standalone: true}" />
 
         <input *ngIf="field.fieldType === 'number'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="number" required [ngModelOptions]="{standalone: true}" />

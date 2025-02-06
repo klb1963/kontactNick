@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/categories/**").hasAuthority("ROLE_USER")  // ✅ Доступ к категориям
                         .requestMatchers(HttpMethod.PUT, "/api/fields/**").authenticated() // ✅ Обновление полей
                         .requestMatchers(HttpMethod.DELETE, "/api/categories/**/fields/**").authenticated() // ✅ Удаление полей
+                        .requestMatchers(HttpMethod.POST, "/api/contact-log/add").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

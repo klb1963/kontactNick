@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { CategoryService } from '../services/category.service';
 import { AddContactDialogComponent } from '../add-contact/add-contact.component';
+import { ContactLogService } from '../services/contact-log.service'; // ✅ Импортируем сервис логов
 
 @Component({
   selector: 'app-category-fields',
@@ -27,6 +28,7 @@ export class CategoryFieldsComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private dialog = inject(MatDialog);
+  private contactLogService = inject(ContactLogService); // ✅ Внедряем ContactLogService
 
   ngOnInit(): void {
     this.authService.isLoggedIn().subscribe(isAuth => {
@@ -155,7 +157,19 @@ export class CategoryFieldsComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        console.log('✅ Contact added:', result);
+        console.log('✅ Contact added:', result); // 🔍 Посмотрим, что внутри result
+
+        const logData = {
+          currentUserNick: result.currentUserNick, // ⛔ Ошибка здесь?
+          addedUserNick: result.nick, // ⛔ Ошибка здесь?
+          category: this.categoryName,
+          fields: this.fields.map(field => field.name)
+        };
+
+        this.contactLogService.logContactAddition(logData).subscribe({
+          next: () => console.log('📜 Log saved successfully'),
+          error: err => console.error('❌ Error saving log:', err)
+        });
       }
     });
   }
