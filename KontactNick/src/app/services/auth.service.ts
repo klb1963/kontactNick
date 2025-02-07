@@ -5,6 +5,11 @@ import { Router } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { map, tap, switchMap, catchError } from 'rxjs/operators';
 
+/** ✅ Интерфейс для ответа сервера */
+interface GoogleAuthResponse {
+  accessToken: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -129,4 +134,28 @@ export class AuthService {
   updateNick(newNick: string): Observable<any> {
     return this.http.put(`${this.baseUrl}/profile/nick`, { nick: newNick }, { withCredentials: true });
   }
+
+  /** ✅ Обработка ответа от Google OAuth */
+  handleGoogleAuthResponse(code: string): Observable<boolean> {
+    return this.http.post<GoogleAuthResponse>(
+      `${this.baseUrl}/auth/google/callback`,
+      { code }, // ✅ Отправляем код на сервер для обмена на токен
+      { withCredentials: true }
+    ).pipe(
+      tap((response: GoogleAuthResponse) => {
+        if (response?.accessToken) {
+          localStorage.setItem("googleAccessToken", response.accessToken);
+          console.log("✅ Google access token saved:", response.accessToken);
+        } else {
+          console.error("❌ No access token received from Google!");
+        }
+      }),
+      map(response => !!response?.accessToken),
+      catchError(error => {
+        console.error("🚨 Google OAuth error:", error);
+        return of(false);
+      })
+    );
+  }
+
 }

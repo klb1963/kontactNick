@@ -185,6 +185,12 @@
 			<version>v1-rev20210903-1.32.1</version>
 		</dependency>
 
+		<dependency>
+			<groupId>com.google.http-client</groupId>
+			<artifactId>google-http-client-jackson2</artifactId>
+			<version>1.45.3</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
