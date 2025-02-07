@@ -4,6 +4,18 @@
   <!-- Динамическая форма на основе полей категории -->
   <form #contactForm="ngForm">
 
+    <!-- Поле для ввода имени (обязательное) -->
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Name</mat-label>
+      <input matInput [(ngModel)]="contactData.name" name="name" required />
+    </mat-form-field>
+
+    <!-- Поле для ввода email (обязательное) -->
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Email</mat-label>
+      <input matInput [(ngModel)]="contactData.email" name="email" type="email" required />
+    </mat-form-field>
+
     <!-- Поле для ввода ника (обязательное) -->
     <mat-form-field appearance="outline" style="width: 100%;">
       <mat-label>Nick (User to add)</mat-label>
@@ -18,12 +30,11 @@
         <mat-label>{{ field.name }}</mat-label>
 
         <!-- Динамический рендеринг полей в зависимости от типа -->
-        <input *ngIf="field.fieldType === 'text'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="text" required [ngModelOptions]="{standalone: true}" />
+        <input *ngIf="field.fieldType === 'text'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="text" [ngModelOptions]="{standalone: true}" />
 
-        <input *ngIf="field.fieldType === 'number'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="number" required [ngModelOptions]="{standalone: true}" />
+        <input *ngIf="field.fieldType === 'number'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="number" [ngModelOptions]="{standalone: true}" />
 
-        <input *ngIf="field.fieldType === 'email'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="email" required [ngModelOptions]="{standalone: true}" />
-
+        <input *ngIf="field.fieldType === 'email'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="email" [ngModelOptions]="{standalone: true}" />
       </mat-form-field>
     </div>
 
@@ -39,5 +50,5 @@
   <button mat-raised-button
           color="primary"
           (click)="save()"
-          [disabled]="!contactForm.form.valid">Save</button>
+          [disabled]="!contactForm.form.valid">Save to Google Contacts</button>
 </mat-dialog-actions>
