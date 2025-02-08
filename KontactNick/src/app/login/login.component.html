@@ -1,37 +1,30 @@
-<div class="form-container">
-  <mat-form-field class="full-width">
-    <input
-      matInput
-      type="email"
-      name="email"
-      placeholder="Email"
-      [(ngModel)]="email"
-      autocomplete="email"
-      required
-    />
-  </mat-form-field>
+<div class="login-container">
+  <h1 class="app-title">KontactNick</h1>
+  <p class="app-subtitle">Наведи порядок в своих Контактах</p>
 
-  <mat-form-field class="full-width">
-    <input
-      matInput
-      type="password"
-      name="password"
-      placeholder="Password"
-      [(ngModel)]="password"
-      autocomplete="current-password"
-      required
-    />
-  </mat-form-field>
+  <div class="form-container">
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" name="email" [(ngModel)]="email" required />
+    </mat-form-field>
 
-  <button mat-raised-button color="primary" (click)="login()">Login</button>
+    <mat-form-field appearance="outline">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" name="password" [(ngModel)]="password" required />
+    </mat-form-field>
 
-  <button mat-raised-button color="accent" (click)="loginWithGoogle()">
-    Войти через Google
-  </button>
+    <button mat-raised-button color="primary" (click)="login()" class="full-width">Login</button>
 
-  <p>
-    Нет аккаунта? <a [routerLink]="['/register']">Зарегистрироваться</a>
-  </p>
+    <p class="register-link">
+      Нет аккаунта? <a [routerLink]="['/register']">Зарегистрироваться</a>
+    </p>
 
-  <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>
+    <hr />
+
+    <button mat-raised-button color="accent" (click)="loginWithGoogle()" class="google-button">
+      Войти через Google
+    </button>
+
+    <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>
+  </div>
 </div>

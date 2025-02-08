@@ -1,30 +1,35 @@
-<div class="form-container">
-  <mat-form-field>
-    <input matInput placeholder="Email" [(ngModel)]="email" />
-  </mat-form-field>
+<div class="register-container">
+  <h1 class="app-title">KontactNick</h1>
+  <p class="app-subtitle">Наведи порядок в своих Контактах</p>
 
-  <mat-form-field>
-    <input matInput type="password" placeholder="Password" [(ngModel)]="password" />
-  </mat-form-field>
+  <div class="form-container">
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" [(ngModel)]="email" name="email" required />
+    </mat-form-field>
 
-  <mat-form-field>
-    <input
-      matInput
-      type="password"
-      placeholder="Confirm Password"
-      [(ngModel)]="confirmPassword"
-    />
-  </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" [(ngModel)]="password" name="password" required />
+    </mat-form-field>
 
-  <button mat-raised-button color="primary" (click)="register()">Register</button>
-  <button mat-raised-button color="accent" (click)="registerWithGoogle()">
-    Регистрация через Google
-  </button>
-  <p>
-    Уже есть аккаунт? <a [routerLink]="['/login']">Войти</a>
-  </p>
+    <mat-form-field appearance="outline">
+      <mat-label>Confirm Password</mat-label>
+      <input matInput type="password" [(ngModel)]="confirmPassword" name="confirmPassword" required />
+    </mat-form-field>
 
-  <hr />
+    <button mat-raised-button color="primary" (click)="register()" class="full-width">Register</button>
 
-  <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>
+    <p class="login-link">
+      Уже есть аккаунт? <a [routerLink]="['/login']">Войти</a>
+    </p>
+
+    <hr />
+
+    <button mat-raised-button color="accent" (click)="registerWithGoogle()" class="google-button">
+      Регистрация через Google
+    </button>
+
+    <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>
+  </div>
 </div>
