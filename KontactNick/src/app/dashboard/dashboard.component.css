@@ -1,99 +1,102 @@
-/* ✅ Стили */
-
- .profile-card {
-   margin-bottom: 20px;
-   margin-left: 20px;
-   padding: 16px;
-   background-color: #f9f9f9;
-   border-radius: 8px;
-   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
- }
-
-.profile-content {
-  display: flex;
-  align-items: center;
-}
-
-.avatar {
-  margin-left: 20px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 2px solid #ccc;
-  background-size: cover;
-  background-position: center;
-}
-
-.user-info {
-  margin-left: 40px;
-}
-
-/* ✅ Кнопка добавления категории */
-.add-category button {
-  background-color: #007bff;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s;
-  margin-top: 30px;
-  margin-bottom: 30px;
-  margin-left: 20px;
-}
-
-.add-category button:hover {
-  background-color: #0056b3;
-}
-
-.categories-card {
-  margin: 20px 0;
+/* ✅ Общий контейнер */
+.fields-card {
+  margin: 30px 0;
   padding: 20px;
+  background-color: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.categories-table {
-  width: 100%;
-  border-collapse: collapse;
+/* ✅ Заголовок */
+.fields-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  color: #333;
 }
 
-th, td {
+/* ✅ Таблица */
+.fields-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.fields-table th,
+.fields-table td {
   padding: 12px;
   text-align: left;
   border-bottom: 1px solid #ddd;
 }
 
-th {
+.fields-table th {
   background-color: #f5f5f5;
   font-weight: bold;
+  color: #444;
 }
 
-.logout-button {
-  text-align: center;
-  margin-top: 20px;
-}
-
-.error-message {
-  color: red;
-  font-size: 12px;
-}
-
-/* ✅ Кнопки для действий с категориями */
+/* ✅ Кнопки действий */
 .field-action-btn {
   cursor: pointer;
   margin-right: 8px;
   padding: 6px 12px;
   border: none;
   border-radius: 4px;
-  background-color: #1976d2; /* Основной цвет */
+  background-color: #1976d2;
   color: white;
   transition: background-color 0.3s ease;
 }
 
 .field-action-btn:hover {
-  background-color: #1565c0; /* Цвет при наведении */
+  background-color: #1565c0;
 }
 
-.field-action-btn:last-child {
-  margin-right: 0;
+/* ✅ Кнопка "Add Category" */
+.add-field-btn {
+  margin: 20px 0;
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.add-field-btn:hover {
+  background-color: #388e3c;
+}
+
+/* ✅ Контейнер профиля */
+.profile-container {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* Отступ между аватаром и информацией */
+}
+
+/* ✅ Аватар */
+.profile-avatar-container {
+  flex-shrink: 0;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 0px;
+  object-fit: cover;
+  border: 2px solid #ccc;
+}
+
+/* ✅ Информация о профиле */
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  font-size: 1rem;
+  gap: 8px;
+}
+
+/* ✅ Ошибки */
+.profile-error {
+  color: red;
+  font-size: 12px;
 }
