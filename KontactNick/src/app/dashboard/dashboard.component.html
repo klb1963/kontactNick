@@ -1,32 +1,25 @@
 <!-- ✅ Профиль пользователя -->
-<mat-card *ngIf="userProfile" style="margin-bottom: 20px; padding: 16px;">
-  <mat-card-title style="font-weight: bold; font-size: 20px;">👤 Profile</mat-card-title>
+<mat-card *ngIf="userProfile" class="fields-card">
+  <h2 class="fields-title">👤 Profile</h2>
 
-  <mat-card-content style="display: flex; align-items: center;">
-    <div *ngIf="userProfile.avatarUrl; else defaultAvatar"
-         [ngStyle]="{
-         'background-image': 'url(' + userProfile.avatarUrl + ')',
-         'background-size': 'cover',
-         'background-position': 'center',
-         'width': '60px',
-         'height': '60px',
-         'border-radius': '50%',
-         'border': '2px solid #ccc'
-       }">
+  <mat-card-content class="profile-container">
+    <!-- ✅ Аватар -->
+    <div class="profile-avatar-container">
+      <img *ngIf="userProfile?.avatarUrl; else defaultAvatar"
+           [src]="userProfile.avatarUrl"
+           alt="User Avatar"
+           class="profile-avatar"/>
+      <ng-template #defaultAvatar>
+        <img src="assets/default-avatar.png" alt="Default Avatar" class="profile-avatar"/>
+      </ng-template>
     </div>
 
-    <!-- ✅ Аватар по умолчанию -->
-    <ng-template #defaultAvatar>
-      <img src="assets/unisex-avatar.png"
-           alt="Default Avatar"
-           style="width: 60px; height: 60px; border-radius: 50%; border: 2px solid #ccc;" />
-    </ng-template>
-
-    <div style="margin-left: 16px;">
+    <!-- ✅ Информация о пользователе -->
+    <div class="profile-info">
       <div>
         <strong>Nick:</strong>
         <span *ngIf="!isEditingNick">{{ userProfile.nick || 'N/A' }}</span>
-        <input *ngIf="isEditingNick" [(ngModel)]="editableNick" placeholder="Enter new nick" />
+        <input *ngIf="isEditingNick" [(ngModel)]="editableNick" placeholder="Enter new nick"/>
 
         <button mat-icon-button color="primary" *ngIf="!isEditingNick" (click)="editNick()">
           <mat-icon>edit</mat-icon>
@@ -44,59 +37,47 @@
       <div><strong>E-mail:</strong> {{ userProfile.email }}</div>
       <div><strong>Role:</strong> {{ userProfile.role }}</div>
 
-      <div *ngIf="nickError" style="color: red; font-size: 12px;">
+      <div *ngIf="nickError" class="profile-error">
         {{ nickError }}
       </div>
     </div>
   </mat-card-content>
 </mat-card>
 
-<!-- ✅ Кнопка для добавления новой категории -->
-<div style="margin: 10px 0; text-align: left;">
-  <button mat-raised-button color="primary" class="field-action-btn" (click)="openCategoryDialog()">
-    ➕ Add Category
-  </button>
+<!-- ✅ Кнопка "Add Category" (в стиле Add Field) -->
+<div style="margin: 20px 0; display: flex; justify-content: flex-start;">
+  <button class="add-field-btn" (click)="openCategoryDialog()">➕ Add Category</button>
 </div>
 
 <!-- ✅ Категории -->
-<mat-card *ngIf="categories && categories.length > 0" class="categories-card">
-  <mat-card-title>📂 Categories</mat-card-title>
+<mat-card *ngIf="categories && categories.length > 0" class="fields-card">
+  <h2 class="fields-title">📂 Your Categories</h2>
 
   <mat-card-content>
-    <table mat-table [dataSource]="categories" class="mat-elevation-z8" style="width: 100%;">
-      <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef>Category Name</th>
-        <td mat-cell *matCellDef="let category">{{ category.name }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="description">
-        <th mat-header-cell *matHeaderCellDef>Description</th>
-        <td mat-cell *matCellDef="let category">{{ category.description || 'No description' }}</td>
-      </ng-container>
-
-      <!-- ⚙️ Колонка для кнопок действий -->
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
-        <td mat-cell *matCellDef="let category">
-          <button mat-raised-button class="field-action-btn" (click)="viewCategoryFields(category.id)">
-            👀 View
-          </button>
-          <button mat-raised-button class="field-action-btn" (click)="openCategoryDialog(category)">
-            ✏️ Edit
-          </button>
-          <button mat-raised-button class="field-action-btn" (click)="deleteCategory(category.id)">
-            🗑️ Delete
-          </button>
+    <table class="fields-table">
+      <thead>
+      <tr>
+        <th>Category Name</th>
+        <th>Description</th>
+        <th>Actions</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr *ngFor="let category of categories">
+        <td>{{ category.name }}</td>
+        <td>{{ category.description || 'No description' }}</td>
+        <td>
+          <button class="field-action-btn" (click)="viewCategoryFields(category.id)">👀 View</button>
+          <button class="field-action-btn" (click)="openCategoryDialog(category)">✏️ Edit</button>
+          <button class="field-action-btn" (click)="deleteCategory(category.id)">🗑️ Delete</button>
         </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="['name', 'description', 'actions']"></tr>
-      <tr mat-row *matRowDef="let row; columns: ['name', 'description', 'actions'];"></tr>
+      </tr>
+      </tbody>
     </table>
   </mat-card-content>
 </mat-card>
 
 <!-- 🔴 Logout Button -->
-<div style="margin-top: 40px; text-align: center;">
-  <button mat-stroked-button color="warn" (click)="logout()">Logout</button>
+<div style="display: flex; justify-content: center; margin-top: 20px;">
+  <button mat-stroked-button color="warn" (click)="logout()">🔴 Logout</button>
 </div>

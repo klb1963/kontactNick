@@ -73,7 +73,14 @@ export class DashboardComponent implements OnInit {
       (profile) => {
         if (profile) {
           this.userProfile = profile;
+
+          // ✅ Логируем профиль
           console.log("✅ User profile loaded:", profile);
+
+          // ✅ Проверяем, есть ли avatarUrl
+          if (!profile.avatarUrl) {
+            console.warn("⚠️ No avatar URL found in profile:", profile);
+          }
         } else {
           console.warn("⚠️ Профиль не загружен");
         }
