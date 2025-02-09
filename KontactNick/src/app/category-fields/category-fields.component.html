@@ -1,7 +1,13 @@
 <!-- category-fields.component.html -->
-
 <mat-card class="fields-card">
   <h2 class="fields-title">📋 Fields for Category: {{ categoryName }}</h2>
+
+  <!-- ✅ Инструкция -->
+  <mat-card class="instruction-card">
+    <p> ℹ️ <strong>Здесь вы управляете категориями ваших контактов.</strong><br>
+      <strong>❗Важно:</strong> У каждого контакта уже есть стандартные поля: <strong>имя, email, телефон</strong>.<br>
+      Добавляйте только те поля, которые необходимы именно для этой категории.</p>
+  </mat-card>
 
   <!-- ✅ Кнопки для добавления поля и контакта -->
   <div style="margin: 20px 0; display: flex; gap: 10px;">
@@ -12,14 +18,19 @@
     <table class="fields-table" *ngIf="fields.length; else noFields">
       <thead>
       <tr>
-        <th>Field Name</th>
+        <th>
+          Field Name
+          <button class="sort-btn" (click)="toggleSortOrder()">
+            🔄
+          </button>
+        </th>
         <th>Field Type</th>
         <th>Field Value</th>
         <th>Actions</th>
       </tr>
       </thead>
       <tbody>
-      <tr *ngFor="let field of fields">
+      <tr *ngFor="let field of sortedFields">
         <td>{{ field.name }}</td>
         <td>{{ field.fieldType }}</td>
         <td>{{ field.value }}</td>
@@ -36,7 +47,7 @@
     </ng-template>
   </mat-card-content>
 
-  <!-- ✅ Кнопки для добавления поля и контакта -->
+  <!-- ✅ Кнопки для добавления контакта -->
   <div style="margin: 20px 0; display: flex; gap: 10px;">
     <button class="add-contact-btn" (click)="addContact(categoryId)">➕ Add Contact</button>
   </div>

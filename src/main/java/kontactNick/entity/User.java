@@ -6,6 +6,7 @@ import kontactNick.entity.Category;
 import kontactNick.entity.Roles;
 import lombok.*;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +43,16 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY) // ✅ Оптимизированная загрузка
     @JsonManagedReference
     private List<Category> categories = new ArrayList<>();
+
+    @Column(length = 2048, nullable = true)
+    private String googleAccessToken;
+
+    @Column(length = 2048, nullable = true)
+    private String googleRefreshToken;
+
+    @Column(nullable = true)
+    private Instant googleTokenExpiry;
 }
+
 
 

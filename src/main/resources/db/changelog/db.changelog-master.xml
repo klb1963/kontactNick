@@ -13,5 +13,7 @@
     <include file="db/changelog/db.changelog-2025-02-06-contact-log.xml"/> <!-- ✅ Добавили -->
     <include file="db/changelog/db.changelog-2025-02-06-contact-log-fields.xml"/>
     <include file="db/changelog/db.changelog-2025-02-06-rename-fields.xml"/>
+    <include file="db/changelog/db.changelog-2025-02-09-add-google-tokens.xml"/>
+    <include file="db/changelog/db.changelog-2025-02-09-add-google-resource-name-to-categories.xml"/>
 
 </databaseChangeLog>

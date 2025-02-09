@@ -1,5 +1,6 @@
 package kontactNick.security.handler;
 
+import jakarta.servlet.http.Cookie;
 import kontactNick.entity.Roles;
 import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
@@ -17,6 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.WebUtils;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Optional;
@@ -68,6 +71,23 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                 log.info("🔐 SecurityContextHolder: Пользователь аутентифицирован -> {}", authentication.getName());
             } else {
                 log.info("🔐 SecurityContextHolder уже содержит аутентификацию: {}", SecurityContextHolder.getContext().getAuthentication().getName());
+            }
+
+            // ✅ Проверяем, есть ли уже JWT в куках
+            Cookie existingJwtCookie = WebUtils.getCookie(request, "jwt-token");
+
+            if (existingJwtCookie == null) {
+                log.warn("⚠️ JWT-cookie НЕ найден в запросе! Браузер его не отправил или сессия была сброшена.");
+            } else {
+                log.info("🍪 JWT-cookie найден: {}", existingJwtCookie.getValue());
+
+                // Проверяем валидность токена
+                if (tokenService.validateToken(existingJwtCookie.getValue())) {
+                    log.info("✅ Используем существующий JWT для пользователя: {}", user.getEmail());
+                    return;  // ❗ Прерываем выполнение, не создаём новый токен
+                } else {
+                    log.warn("❌ Найден JWT, но он НЕ ВАЛИДЕН! Создаём новый токен.");
+                }
             }
 
             // ✅ Генерация JWT токена

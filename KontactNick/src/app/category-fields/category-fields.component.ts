@@ -9,7 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { CategoryService } from '../services/category.service';
 import { AddContactDialogComponent } from '../add-contact/add-contact.component';
-import { ContactLogService } from '../services/contact-log.service'; // ✅ Импортируем сервис логов
+import { ContactLogService } from '../services/contact-log.service';
 
 @Component({
   selector: 'app-category-fields',
@@ -21,35 +21,37 @@ import { ContactLogService } from '../services/contact-log.service'; // ✅ Им
 export class CategoryFieldsComponent implements OnInit {
   categoryId!: number;
   fields: any[] = [];
+  sortedFields: any[] = [];
   categoryName: string = '';
+  sortOrder: 'asc' | 'desc' = 'asc';
 
   private authService = inject(AuthService);
   private categoryService = inject(CategoryService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private dialog = inject(MatDialog);
-  private contactLogService = inject(ContactLogService); // ✅ Внедряем ContactLogService
+  private contactLogService = inject(ContactLogService);
 
   ngOnInit(): void {
-    this.authService.isLoggedIn().subscribe(isAuth => {
+    this.authService.isLoggedIn().subscribe((isAuth: boolean) => {
       if (isAuth) {
         this.categoryId = Number(this.route.snapshot.paramMap.get('id'));
         this.loadCategory();
         this.loadFields();
       } else {
         console.warn("❌ Пользователь не аутентифицирован. Перенаправление на страницу входа.");
-        this.router.navigate(['/login']);  // ✅ Перенаправление на страницу входа
+        this.router.navigate(['/login']);
       }
     });
   }
 
   loadCategory(): void {
     this.categoryService.getCategoryById(this.categoryId).subscribe({
-      next: (category) => {
+      next: (category: any) => {
         this.categoryName = category.name;
         console.log("✅ Category loaded:", category);
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error("❌ Error loading category:", err);
         if (err.status === 404) {
           alert('Категория не найдена. Возможно, она была удалена.');
@@ -61,17 +63,26 @@ export class CategoryFieldsComponent implements OnInit {
 
   loadFields(): void {
     this.categoryService.getCategoryFields(this.categoryId).subscribe({
-      next: (fields) => {
+      next: (fields: any[]) => {
         console.log("📥 Refreshed fields:", fields);
-        this.fields = fields;
+        this.fields = fields || [];
+        this.sortFields();
       },
-      error: (err) => {
-        console.error("❌ Error loading fields:", err);
-        if (err.status === 404) {
-          alert('Поля не найдены. Возможно, категория была удалена.');
-          this.router.navigate(['/dashboard']);
-        }
-      }
+      error: (err: any) => console.error("❌ Error loading fields:", err)
+    });
+  }
+
+  /** ✅ Переключение сортировки */
+  toggleSortOrder() {
+    this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+    this.sortFields();
+  }
+
+  /** ✅ Метод сортировки */
+  sortFields() {
+    this.sortedFields = [...this.fields].sort((a, b) => {
+      const comparison = a.name.localeCompare(b.name);
+      return this.sortOrder === 'asc' ? comparison : -comparison;
     });
   }
 
@@ -81,14 +92,14 @@ export class CategoryFieldsComponent implements OnInit {
       data: { categoryId: this.categoryId }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result: any) => {
       if (result) {
         this.categoryService.addFieldToCategory(this.categoryId, result).subscribe({
           next: () => {
             console.log("✅ Field added, refreshing fields...");
             this.loadFields();
           },
-          error: (err) => console.error("❌ Error adding field:", err)
+          error: (err: any) => console.error("❌ Error adding field:", err)
         });
       }
     });
@@ -110,12 +121,12 @@ export class CategoryFieldsComponent implements OnInit {
       }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result: any) => {
       if (result) {
         this.categoryService.updateField(categoryId, field.id, result)
           .subscribe({
             next: () => this.loadFields(),
-            error: (error) => {
+            error: (error: any) => {
               console.error('❌ Ошибка при обновлении поля:', error);
               if (error.status === 404) {
                 alert('Поле не найдено. Возможно, оно было удалено.');
@@ -134,7 +145,7 @@ export class CategoryFieldsComponent implements OnInit {
           console.log(`✅ Field with ID ${fieldId} deleted.`);
           this.loadFields();
         },
-        error: (err) => {
+        error: (err: any) => {
           console.error("❌ Error deleting field:", err);
           if (err.status === 404) {
             alert('Поле или категория не найдены. Возможно, они были удалены.');
@@ -155,23 +166,22 @@ export class CategoryFieldsComponent implements OnInit {
       data: { categoryId: categoryId }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result: any) => {
       if (result) {
-        console.log('✅ Contact added:', result); // 🔍 Посмотрим, что внутри result
+        console.log('✅ Contact added:', result);
 
         const logData = {
-          currentUserNick: result.currentUserNick, // ⛔ Ошибка здесь?
-          addedUserNick: result.nick, // ⛔ Ошибка здесь?
+          currentUserNick: result.currentUserNick,
+          addedUserNick: result.nick,
           category: this.categoryName,
           fields: this.fields.map(field => field.name)
         };
 
         this.contactLogService.logContactAddition(logData).subscribe({
           next: () => console.log('📜 Log saved successfully'),
-          error: err => console.error('❌ Error saving log:', err)
+          error: (err: any) => console.error('❌ Error saving log:', err)
         });
       }
     });
   }
-
 }

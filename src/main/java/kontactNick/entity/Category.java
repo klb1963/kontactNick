@@ -35,4 +35,8 @@ public class Category {
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)  // ✅ Оптимизированная загрузка полей
     @JsonManagedReference
     private List<Field> fields = new ArrayList<>();
+
+    @Column(nullable = true, length = 255)
+    private String googleResourceName; // ✅ Связь с Google Contacts
+
 }

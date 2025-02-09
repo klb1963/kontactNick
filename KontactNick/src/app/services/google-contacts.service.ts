@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import {Observable} from 'rxjs';
 
 @Injectable({
   providedIn: 'root'  // ✅ Обязательно для Standalone API
@@ -7,16 +8,23 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 export class GoogleContactsService {
   constructor(private http: HttpClient) {}
 
-  addToGoogleContacts(contact: any, additionalFields: any[], accessToken: string) {
-    const headers = new HttpHeaders().set("Authorization", `Bearer ${accessToken}`);
+  addToGoogleContacts(contact: any, accessToken: string | null): Observable<any> {
+    if (!accessToken) {
+      console.error("❌ No Google Access Token available!");
+      return new Observable(observer => {
+        observer.error("No Access Token");
+        observer.complete();
+      });
+    }
 
-    const requestData = {
-      ...contact,  // ✅ Основные поля (name, nickname, email, phone)
-      additionalFields  // ✅ Дополнительные поля в виде списка
-    };
+    const headers = new HttpHeaders({
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    });
 
-    console.log("📤 Sending to Google Contacts:", requestData);
+    const apiUrl = 'https://people.googleapis.com/v1/people:createContact';
 
-    return this.http.post('/api/google/contacts', requestData, { headers });
+    return this.http.post(apiUrl, contact, { headers });
   }
+
 }

@@ -99,17 +99,17 @@ export class AddContactDialogComponent implements OnInit {
       return;
     }
 
-    this.googleContactsService.addToGoogleContacts(contact, additionalFields, accessToken)
-      .subscribe({
-        next: (response) => {
-          console.log('✅ Contact saved to Google Contacts:', response);
-          alert("✅ Contact successfully saved to Google Contacts!");
-        },
-        error: (err) => {
-          console.error("❌ Error saving contact to Google Contacts:", err);
-          alert("❌ Failed to save contact to Google Contacts!");
-        }
-      });
+    this.googleContactsService.addToGoogleContacts(contact, accessToken).subscribe({
+      next: (response) => {
+        console.log("✅ Contact successfully added to Google Contacts!", response);
+        alert("✅ Контакт успешно добавлен в Google!");
+      },
+      error: (err) => {
+        console.error("❌ Error adding contact to Google:", err);
+        alert("❌ Ошибка при добавлении контакта в Google.");
+      }
+    });
+
   }
 
   close(): void {
