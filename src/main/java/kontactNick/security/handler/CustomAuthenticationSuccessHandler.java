@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -89,6 +90,26 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                     log.warn("❌ Найден JWT, но он НЕ ВАЛИДЕН! Создаём новый токен.");
                 }
             }
+
+            // ✅ Получаем access_token и refresh_token из OIDC токена
+            String googleAccessToken = oidcUser.getIdToken().getTokenValue();
+            OidcIdToken idToken = oidcUser.getIdToken();
+            String googleRefreshToken = idToken.getClaims().getOrDefault("refresh_token", "").toString();
+
+            log.info("🔍 Google OAuth Tokens: accessToken={}, refreshToken={}", googleAccessToken, googleRefreshToken);
+            // ✅ Всегда сохраняем access_token
+            user.setGoogleAccessToken(googleAccessToken);
+
+            // ✅ Сохраняем refresh_token, если он есть
+            if (!googleRefreshToken.isEmpty()) {
+                user.setGoogleRefreshToken(googleRefreshToken);
+            } else {
+                log.warn("⚠️ У Google отсутствует refresh_token! Возможно, это первый вход или он уже был использован.");
+            }
+
+            // ✅ Сохраняем пользователя в базу
+            userRepository.save(user);
+            log.info("✅ Google Access Token сохранён в базе для пользователя: {}", user.getEmail());
 
             // ✅ Генерация JWT токена
             String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());

@@ -3,6 +3,7 @@ package kontactNick.service;
 import jakarta.annotation.PostConstruct;
 import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 public class UserGoogleTokenService {
     private final UserRepository userRepository;
@@ -48,6 +50,7 @@ public class UserGoogleTokenService {
      */
     public String refreshAccessToken(User user) {
         if (user.getGoogleRefreshToken() == null) {
+            log.error("❌ Ошибка: у пользователя {} нет refresh token'а в базе!", user.getEmail());
             throw new IllegalStateException("Refresh token is missing for user: " + user.getEmail());
         }
 

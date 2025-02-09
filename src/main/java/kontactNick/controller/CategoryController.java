@@ -38,6 +38,7 @@ public class CategoryController {
     private final CategoryRepository categoryRepository;
     private final FieldRepository fieldRepository;
     private final FieldService fieldService;
+    private final CategoryService categoryService;
 
     // ✅ Создание категории
     @PostMapping("/categories")
@@ -56,7 +57,10 @@ public class CategoryController {
         category.setDescription(categoryDto.getDescription());
         category.setUser(user);
 
-        Category savedCategory = categoryRepository.save(category);
+        // Category savedCategory = categoryRepository.save(category);
+
+        Category savedCategory = categoryService.createCategoryWithGoogleSync(category, user);
+
         log.info("✅ Created category '{}' for user '{}'", savedCategory.getName(), email);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(savedCategory);
