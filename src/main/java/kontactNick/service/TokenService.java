@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.WebUtils;
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -27,8 +29,11 @@ public class TokenService {
 
     private final JwtTokenProvider jwtTokenProvider; // Добавлен JwtTokenProvider
 
+    // ✅ Хранилище Google Access Token для пользователей
+    private final Map<String, String> googleTokens = new ConcurrentHashMap<>();
+
     /**
-     * Генерирует HTTP-only cookie с JWT-токеном
+     * ✅ Генерирует HTTP-only cookie с JWT-токеном
      */
     public ResponseCookie generateCookie(String token) {
         return ResponseCookie.from(JWT_COOKIE_NAME, token)
@@ -41,7 +46,7 @@ public class TokenService {
     }
 
     /**
-     * Очищает JWT-cookie (выход из системы)
+     * ✅ Очищает JWT-cookie (выход из системы)
      */
     public ResponseCookie clearCookie() {
         return ResponseCookie.from(JWT_COOKIE_NAME, "")
@@ -54,7 +59,7 @@ public class TokenService {
     }
 
     /**
-     * Извлекает JWT-токен из cookies запроса
+     * ✅ Извлекает JWT-токен из cookies запроса
      */
     public String extractTokenFromCookies(HttpServletRequest request) {
         Cookie cookie = WebUtils.getCookie(request, JWT_COOKIE_NAME);
@@ -67,7 +72,7 @@ public class TokenService {
     }
 
     /**
-     * Проверяет валидность JWT-токена
+     * ✅ Проверяет валидность JWT-токена
      */
     public boolean validateToken(String token) {
         if (!StringUtils.hasText(token)) {
@@ -82,4 +87,28 @@ public class TokenService {
             return false;
         }
     }
+
+    /**
+     * ✅ Сохраняет Google Access Token для пользователя
+     */
+    public void storeGoogleAccessToken(String email, String accessToken) {
+        googleTokens.put(email, accessToken);
+        log.info("✅ Google Access Token сохранен для: {}", email);
+    }
+
+    /**
+     * ✅ Получает Google Access Token для пользователя
+     */
+    public String getGoogleAccessTokenForUser(String email) {
+        return googleTokens.get(email);
+    }
+
+    /**
+     * ✅ Удаляет Google Access Token (например, при выходе)
+     */
+    public void removeGoogleAccessToken(String email) {
+        googleTokens.remove(email);
+        log.info("🔴 Google Access Token удален для: {}", email);
+    }
+
 }

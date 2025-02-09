@@ -158,4 +158,26 @@ export class AuthService {
     );
   }
 
+  /** ✅ Запрос Google Access Token */
+  getGoogleAccessToken(): Observable<string | null> {
+    return this.http.get<{ accessToken?: string }>("http://localhost:8080/api/auth/google-token", {
+      withCredentials: true
+    }).pipe(
+      map(response => {
+        if (response.accessToken) {
+          console.log("✅ Google Access Token получен:", response.accessToken);
+          localStorage.setItem("googleAccessToken", response.accessToken);
+          return response.accessToken;
+        } else {
+          console.error("❌ Ошибка: Google Access Token не найден!");
+          return null;
+        }
+      }),
+      catchError(err => {
+        console.error("❌ Ошибка при запросе Google Access Token:", err);
+        return of(null);
+      })
+    );
+  }
+
 }

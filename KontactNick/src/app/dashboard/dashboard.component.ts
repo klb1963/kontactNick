@@ -33,6 +33,8 @@ import { MatButtonModule } from '@angular/material/button';
 export class DashboardComponent implements OnInit {
   categories: any[] = []; // ✅ Инициализация массива
   displayedColumns: string[] = ['name', 'description', 'actions'];
+  sortedCategories: any[] = [];
+  sortOrder: 'asc' | 'desc' = 'asc'; // ✅ По умолчанию A → Z
   userProfile: any;
 
   isEditingNick = false;
@@ -60,6 +62,7 @@ export class DashboardComponent implements OnInit {
     this.categoryService.getUserCategories().subscribe({
       next: (categories: any[]) => {
         this.categories = categories || []; // ✅ Предотвращение undefined
+        this.sortCategories(); // ✅ Сортируем после загрузки
       },
       error: (error) => {
         console.error("❌ Error fetching categories:", error);
@@ -68,6 +71,21 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  /** ✅ Переключение сортировки */
+  toggleSortOrder() {
+    this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+    this.sortCategories();
+  }
+
+  /** ✅ Метод сортировки */
+  sortCategories() {
+    this.sortedCategories = [...this.categories].sort((a, b) => {
+      const comparison = a.name.localeCompare(b.name);
+      return this.sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }
+
+  /** 👨‍💻 Профайл пользователя */
   loadUserProfile(): void {
     this.authService.getUserProfile().subscribe(
       (profile) => {

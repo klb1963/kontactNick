@@ -92,3 +92,23 @@
 .add-contact-btn:hover {
   background-color: #1565c0;
 }
+
+/* ✅ Информационная карточка */
+.instruction-card {
+  background-color: #f1f8ff;
+  padding: 12px;
+  border-left: 4px solid #1976d2;
+  margin-bottom: 15px;
+  font-size: 14px;
+  color: #333;
+}
+
+/* ✅ Кнопка сортировки в заголовке */
+.sort-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 6px;
+  padding: 0;
+}

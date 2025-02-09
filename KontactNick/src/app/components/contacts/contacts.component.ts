@@ -1,29 +1,55 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { GoogleContactsService } from '../../services/google-contacts.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-contacts',
   templateUrl: './contacts.component.html',
   standalone: true
 })
-export class ContactsComponent {
+export class ContactsComponent implements OnInit {  // ✅ Добавили OnInit
+  constructor(
+    private googleContactsService: GoogleContactsService,
+    private authService: AuthService
+  ) {}
 
-  constructor(private googleContactsService: GoogleContactsService) {}
+  ngOnInit() {
+    // ✅ Проверяем, получаем ли токен при загрузке страницы
+    this.authService.getGoogleAccessToken().subscribe(accessToken => {
+      if (accessToken) {
+        console.log("✅ Google Access Token успешно получен:", accessToken);
+      } else {
+        console.error("❌ Не удалось получить Google Access Token!");
+      }
+    });
+  }
 
   saveContact() {
     const contact = {
-      firstName: 'John',
-      nickname: 'Johnny',
-      email: 'john@example.com'
+      names: [{ givenName: 'John' }],  // ✅ Google требует массив `names`
+      emailAddresses: [{ value: 'john@example.com' }], // ✅ Google требует `emailAddresses`
+      phoneNumbers: [{ value: '+123456789' }] // ✅ Добавили телефон (по желанию)
     };
 
-    const accessToken = localStorage.getItem("googleAccessToken"); // Получаем токен после авторизации
-    if (accessToken) {
-      this.googleContactsService.addToGoogleContacts(contact, accessToken).subscribe(response => {
-        console.log('Contact saved:', response);
+    // ✅ Получаем Google Access Token
+    this.authService.getGoogleAccessToken().subscribe(accessToken => {
+      if (!accessToken) {
+        console.error("❌ No Google access token found!");
+        alert("⚠️ Авторизация в Google не найдена! Перезайдите в аккаунт.");
+        return;
+      }
+
+      // ✅ Отправляем контакт в Google Contacts API
+      this.googleContactsService.addToGoogleContacts(contact, accessToken).subscribe({
+        next: (response) => {
+          console.log("✅ Contact successfully added to Google Contacts!", response);
+          alert("✅ Контакт успешно добавлен в Google!");
+        },
+        error: (err) => {
+          console.error("❌ Error adding contact to Google:", err);
+          alert("❌ Ошибка при добавлении контакта в Google.");
+        }
       });
-    } else {
-      console.log("User is not authenticated!");
-    }
+    });
   }
 }

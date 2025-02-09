@@ -44,6 +44,14 @@
   </mat-card-content>
 </mat-card>
 
+<!-- ✅ Инструкция -->
+<mat-card class="instruction-card">
+  <p> ℹ️ <strong>Здесь вы управляете категориями ваших контактов.</strong><br>
+    Вы можете легко создавать и редактировать категории контактов, а <strong>искусственный интеллект</strong> поможет вам с их набором
+    в соответствии с вашим возрастом, тем, чем вы занимаетесь, жизненным укладом и другими факторами.<br>
+    <strong>Наведите порядок в своих контактах, настроив для них категории!</strong></p>
+</mat-card>
+
 <!-- ✅ Кнопка "Add Category" (в стиле Add Field) -->
 <div style="margin: 20px 0; display: flex; justify-content: flex-start;">
   <button class="add-field-btn" (click)="openCategoryDialog()">➕ Add Category</button>
@@ -57,13 +65,18 @@
     <table class="fields-table">
       <thead>
       <tr>
-        <th>Category Name</th>
+        <th>
+          Category Name
+          <button class="sort-btn" (click)="toggleSortOrder()">
+            🔄
+          </button>
+        </th>
         <th>Description</th>
         <th>Actions</th>
       </tr>
       </thead>
       <tbody>
-      <tr *ngFor="let category of categories">
+      <tr *ngFor="let category of sortedCategories">
         <td>{{ category.name }}</td>
         <td>{{ category.description || 'No description' }}</td>
         <td>
