@@ -23,6 +23,7 @@ import org.springframework.web.util.WebUtils;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 
 @Slf4j
@@ -48,14 +49,11 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             String email = oidcUser.getEmail();
             String fullName = oidcUser.getFullName();
             String avatarUrl = oidcUser.getPicture();
-
-            // ⚠️ Если `fullName` пустой, используем email как `nick`
             String nick = (fullName != null && !fullName.isEmpty()) ? fullName : email;
 
             log.info("🔍 OAuth User Info: email={}, nick={}, avatarUrl={}", email, nick, avatarUrl);
 
             Optional<User> optionalUser = userRepository.findByEmail(email);
-
             User user = optionalUser.orElseGet(() -> {
                 User newUser = new User();
                 newUser.setEmail(email);
@@ -66,39 +64,23 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                 return userRepository.save(newUser);
             });
 
-            // ✅ Обновляем SecurityContext
-            if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                log.info("🔐 SecurityContextHolder: Пользователь аутентифицирован -> {}", authentication.getName());
-            } else {
-                log.info("🔐 SecurityContextHolder уже содержит аутентификацию: {}", SecurityContextHolder.getContext().getAuthentication().getName());
-            }
-
-            // ✅ Проверяем, есть ли уже JWT в куках
-            Cookie existingJwtCookie = WebUtils.getCookie(request, "jwt-token");
-
-            if (existingJwtCookie == null) {
-                log.warn("⚠️ JWT-cookie НЕ найден в запросе! Браузер его не отправил или сессия была сброшена.");
-            } else {
-                log.info("🍪 JWT-cookie найден: {}", existingJwtCookie.getValue());
-
-                // Проверяем валидность токена
-                if (tokenService.validateToken(existingJwtCookie.getValue())) {
-                    log.info("✅ Используем существующий JWT для пользователя: {}", user.getEmail());
-                    return;  // ❗ Прерываем выполнение, не создаём новый токен
-                } else {
-                    log.warn("❌ Найден JWT, но он НЕ ВАЛИДЕН! Создаём новый токен.");
-                }
-            }
-
             // ✅ Получаем access_token и refresh_token из OIDC токена
             String googleAccessToken = oidcUser.getIdToken().getTokenValue();
             OidcIdToken idToken = oidcUser.getIdToken();
             String googleRefreshToken = idToken.getClaims().getOrDefault("refresh_token", "").toString();
 
+            // 🔍 Получаем `exp` (время истечения токена) и вычисляем `expires_in`
+            Instant tokenExpiry = idToken.getExpiresAt();
+            long expiresIn = Duration.between(Instant.now(), tokenExpiry).getSeconds();
+
             log.info("🔍 Google OAuth Tokens: accessToken={}, refreshToken={}", googleAccessToken, googleRefreshToken);
-            // ✅ Всегда сохраняем access_token
+            log.info("🔑 Новый access_token: {}", googleAccessToken);
+            log.info("⏳ expires_in: {} секунд", expiresIn);
+            log.info("📅 Дата истечения (UTC): {}", tokenExpiry);
+
+            // ✅ Сохраняем access_token и его срок действия
             user.setGoogleAccessToken(googleAccessToken);
+            user.setGoogleTokenExpiry(tokenExpiry);
 
             // ✅ Сохраняем refresh_token, если он есть
             if (!googleRefreshToken.isEmpty()) {
@@ -119,14 +101,14 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                 log.error("❌ Ошибка: JWT не сгенерирован!");
             } else {
                 // ✅ Устанавливаем JWT в Cookie
-                boolean isSecure = request.isSecure();  // Проверяем, HTTPS или HTTP
+                boolean isSecure = request.isSecure();
 
                 ResponseCookie accessTokenCookie = ResponseCookie.from("jwt-token", jwt)
-                        .httpOnly(true)  // ✅ Защищаем Cookie от JavaScript
-                        .secure(isSecure) // ✅ Динамическое определение (HTTPS → true, HTTP → false)
+                        .httpOnly(true)
+                        .secure(isSecure)
                         .path("/")
                         .maxAge(Duration.ofDays(1))
-                        .sameSite(isSecure ? "None" : "Lax")  // ❗ Для кросс-доменных запросов нужен `None`
+                        .sameSite(isSecure ? "None" : "Lax")
                         .build();
 
                 response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
@@ -134,7 +116,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             }
 
             // ✅ Перенаправление пользователя после логина
-            String redirectUrl = "http://localhost:4200/dashboard";  // ✅ Можно вынести в env
+            String redirectUrl = "http://localhost:4200/dashboard";
             log.info("➡ Перенаправляем пользователя на {}", redirectUrl);
             response.sendRedirect(redirectUrl);
         } else {
@@ -142,4 +124,5 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
         }
     }
+
 }
