@@ -34,7 +34,8 @@ spring:
               - https://www.googleapis.com/auth/userinfo.profile
         provider:
           google:
-            authorization-uri: https://accounts.google.com/o/oauth2/auth?access_type=offline&prompt=consent
+            authorization-uri: "https://accounts.google.com/o/oauth2/auth?access_type=offline&prompt=consent"
+            token-uri: https://oauth2.googleapis.com/token
 
   web:
     cors:
@@ -53,6 +54,7 @@ server:
 logging:
   level:
     org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
     org.springframework.web.cors: DEBUG
     kontactNick.security.util: DEBUG
     kontactNick.controller: DEBUG
