@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: contaktnick
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kontactnick_db
+    username: postgres
+    password: password009
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    show-sql: true
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: ${GOOGLE_REDIRECT_URI}
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+            scope:
+              - openid
+              - profile
+              - email
+              - https://www.googleapis.com/auth/contacts
+              - https://www.googleapis.com/auth/userinfo.email
+              - https://www.googleapis.com/auth/userinfo.profile
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/auth?access_type=offline&prompt=consent
+
+  web:
+    cors:
+      allowed-origins: http://localhost:4200
+      allowed-methods: "*"
+      allowed-headers: "*"
+      allow-credentials: true
+
+server:
+  error:
+    whitelabel:
+      enabled: false
+
+  port: 8080
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web.cors: DEBUG
+    kontactNick.security.util: DEBUG
+    kontactNick.controller: DEBUG
+    kontactNick.service: DEBUG
+
+jwt:
+  secret: 2G1yPq6zUe1Bd8VyL3s9QoYkRfC7XhMzWa4JtNpVbKmZ5A6XGd9Y3L7B1Q8R0V2J
+  expiration-ms: 604800000 # 7 дней (7 * 24 * 60 * 60 * 1000)
+
+frontend:
+  url: http://localhost:4200
