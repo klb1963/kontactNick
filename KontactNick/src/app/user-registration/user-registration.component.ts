@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+
+import { environment } from 'src/environments/environment';import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -49,9 +50,22 @@ export class UserRegistrationComponent {
     });
   }
 
-  // ✅ Регистрация через Google
+// ✅ Регистрация через Google
   registerWithGoogle(): void {
-    console.log('🔵 Redirecting to Google registration...');
-    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+    const googleAuthUrl = 'https://accounts.google.com/o/oauth2/auth' +
+      `?client_id=${environment.googleClientId}` +
+      '&redirect_uri=' + encodeURIComponent('http://localhost:8080/login/oauth2/code/google') +
+      '&response_type=code' +
+      '&scope=' + encodeURIComponent('openid email profile https://www.googleapis.com/auth/contacts') +
+      '&access_type=offline' +
+      '&prompt=consent'; // Обязательно запрашиваем разрешения
+
+    console.log('🔵 Redirecting to Google OAuth:', googleAuthUrl);
+    window.location.href = googleAuthUrl;
+
+    setTimeout(() => {
+      window.location.href = googleAuthUrl;
+    }, 300); // 👈 Добавляем небольшую задержку
   }
+
 }
