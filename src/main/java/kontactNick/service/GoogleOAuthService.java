@@ -16,16 +16,25 @@ import org.springframework.web.client.RestTemplate;
 @RequiredArgsConstructor
 public class GoogleOAuthService {
 
-    @Value("${google.client.id}")
+    @Value("${GOOGLE_CLIENT_ID}")
     private String clientId;
 
-    @Value("${google.client.secret}")
+    @Value("${GOOGLE_CLIENT_SECRET}")
     private String clientSecret;
 
-    @Value("${google.redirect-uri}")
+    @Value("${GOOGLE_REDIRECT_URI}")
     private String redirectUri;
 
-    private final RestTemplate restTemplate; // ✅ Теперь Spring сам инжектирует
+    @Value("${GOOGLE_AUTH_URL}")
+    private String authUrl;
+
+    @Value("${GOOGLE_TOKEN_URL}")
+    private String tokenUrl;
+
+    @Value("${GOOGLE_PEOPLE_API_URL}")
+    private String peopleApiUrl;
+
+    private final RestTemplate restTemplate;
 
     @PostConstruct
     public void init() {
@@ -34,12 +43,22 @@ public class GoogleOAuthService {
     }
 
     /**
+     * ✅ Генерация URL для авторизации
+     */
+    public String getAuthUrl() {
+        return authUrl + "?client_id=" + clientId +
+                "&redirect_uri=" + redirectUri +
+                "&response_type=code" +
+                "&scope=https://www.googleapis.com/auth/contacts https://www.googleapis.com/auth/userinfo.profile" +
+                "&access_type=offline" +
+                "&prompt=consent";
+    }
+
+    /**
      * ✅ Обмен кода аутентификации на `access_token`
      */
     public String exchangeCodeForAccessToken(String authCode) {
         log.info("🔄 Exchanging Google auth code for access token...");
-
-        String tokenUrl = "https://oauth2.googleapis.com/token";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -67,12 +86,42 @@ public class GoogleOAuthService {
     }
 
     /**
+     * ✅ Обновление `access_token` с `refresh_token`
+     */
+    public String refreshAccessToken(String refreshToken) {
+        log.info("🔄 Refreshing Google access token...");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        String requestBody = "client_id=" + clientId +
+                "&client_secret=" + clientSecret +
+                "&refresh_token=" + refreshToken +
+                "&grant_type=refresh_token";
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
+        ResponseEntity<String> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, requestEntity, String.class);
+
+        if (response.getStatusCode() == HttpStatus.OK) {
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                JsonNode jsonNode = objectMapper.readTree(response.getBody());
+                return jsonNode.get("access_token").asText();
+            } catch (Exception e) {
+                log.error("❌ Error parsing Google token refresh response", e);
+            }
+        }
+        log.error("❌ Failed to refresh access token, response: {}", response.getBody());
+        return null;
+    }
+
+    /**
      * ✅ Получение информации о пользователе через Google People API
      */
     public GoogleUser getGoogleUserInfo(String accessToken) {
         log.info("🔍 Fetching Google user info...");
 
-        String userInfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
+        String userInfoUrl = peopleApiUrl + "/userinfo";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
