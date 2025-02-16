@@ -52,20 +52,20 @@ export class UserRegistrationComponent {
 
 // ✅ Регистрация через Google
   registerWithGoogle(): void {
-    const googleAuthUrl = 'https://accounts.google.com/o/oauth2/auth' +
-      `?client_id=${environment.googleClientId}` +
-      '&redirect_uri=' + encodeURIComponent('http://localhost:8080/login/oauth2/code/google') +
-      '&response_type=code' +
-      '&scope=' + encodeURIComponent('openid email profile https://www.googleapis.com/auth/contacts') +
-      '&access_type=offline' +
-      '&prompt=consent'; // Обязательно запрашиваем разрешения
 
-    console.log('🔵 Redirecting to Google OAuth:', googleAuthUrl);
-    window.location.href = googleAuthUrl;
+    console.log('🔵 Redirecting to Google ...');
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
 
-    setTimeout(() => {
-      window.location.href = googleAuthUrl;
-    }, 300); // 👈 Добавляем небольшую задержку
+    // const redirectUri = encodeURIComponent(environment.googleRedirectUri);
+    // const googleAuthUrl = `https://accounts.google.com/o/oauth2/auth
+    //   ?client_id=${environment.googleClientId}
+    //   &redirect_uri=${environment.googleRedirectUri}
+    //   &response_type=code
+    //   &scope=${encodeURIComponent('openid email profile https://www.googleapis.com/auth/contacts')}
+    //   &access_type=offline
+    //   &prompt=consent`.replace(/\s+/g, '');
+    // console.log('🔵 Redirecting to Google OAuth:', googleAuthUrl);
+    // window.location.href = googleAuthUrl;
   }
 
 }

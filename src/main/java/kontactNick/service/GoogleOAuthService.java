@@ -40,6 +40,11 @@ public class GoogleOAuthService {
     public void init() {
         System.out.println("✅ GoogleOAuthService bean создан!");
         System.out.println("🔍 Google Client ID: " + clientId);
+        System.out.println("🔍 Google Client ID (из System.getenv()): " + System.getenv("GOOGLE_CLIENT_ID"));
+        System.out.println("🔍 [System.getenv] GOOGLE_CLIENT_ID: " + System.getenv("GOOGLE_CLIENT_ID"));
+        System.out.println("🔍 [System.getProperties] GOOGLE_CLIENT_ID: " + System.getProperty("GOOGLE_CLIENT_ID"));
+        System.out.println("🔍 [Spring @Value] GOOGLE_CLIENT_ID: " + clientId);
+
     }
 
     /**
@@ -58,7 +63,20 @@ public class GoogleOAuthService {
      * ✅ Обмен кода аутентификации на `access_token`
      */
     public String exchangeCodeForAccessToken(String authCode) {
+
+        log.info("🔄 Sending request to exchange auth code for access token...");
+        log.info("   🔹 Code: {}", authCode);
+        log.info("   🔹 Client ID: {}", clientId);
+        log.info("   🔹 Client Secret: {}", clientSecret);
+        log.info("   🔹 Redirect URI: {}", redirectUri);
+        log.info("   🔹 Token URL: {}", tokenUrl);
+
         log.info("🔄 Exchanging Google auth code for access token...");
+        log.info("📢 Sending request with:");
+        log.info("   🔹 Code: {}", authCode);
+        log.info("   🔹 Client ID: {}", clientId);
+        log.info("   🔹 Redirect URI: {}", redirectUri);
+        log.info("   🔹 Grant Type: authorization_code");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -69,8 +87,12 @@ public class GoogleOAuthService {
                 "&redirect_uri=" + redirectUri +
                 "&grant_type=authorization_code";
 
+        log.info("🔄 Request body: {}", requestBody);
+
         HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
         ResponseEntity<String> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, requestEntity, String.class);
+
+        log.info("📢 Response from Google: {}", response.getBody());
 
         if (response.getStatusCode() == HttpStatus.OK) {
             try {
@@ -81,6 +103,7 @@ public class GoogleOAuthService {
                 log.error("❌ Error parsing Google token response", e);
             }
         }
+
         log.error("❌ Failed to exchange auth code for token, response: {}", response.getBody());
         return null;
     }

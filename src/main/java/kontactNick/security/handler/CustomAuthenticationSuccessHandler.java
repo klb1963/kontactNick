@@ -24,6 +24,7 @@ import org.springframework.web.util.WebUtils;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -43,9 +44,33 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+        log.info("✅ [CustomAuthenticationSuccessHandler] Вызван с аутентификацией: {}", authentication);
         log.info("✅ OAuth Login Success: {}", authentication.getName());
+        log.info("🔍 Principal class: {}", authentication.getPrincipal().getClass().getName());
 
         if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
+            log.info("✅ [CustomAuthenticationSuccessHandler] Вошли в OidcUser блок");
+
+            OidcIdToken idToken = oidcUser.getIdToken();
+            Map<String, Object> claims = idToken.getClaims();
+            log.info("🔍 Все claims в токене: {}", claims);
+
+            String googleAccessToken = idToken.getTokenValue();
+            String googleRefreshToken = claims.getOrDefault("refresh_token", "").toString();
+
+            // Проверяем срок действия токена
+            Instant tokenExpiry = idToken.getExpiresAt();
+            long expiresIn = Duration.between(Instant.now(), tokenExpiry).getSeconds();
+
+            log.info("🔍 Google OAuth Tokens: accessToken={}, refreshToken={}", googleAccessToken, googleRefreshToken);
+            log.info("⏳ `access_token` истекает через {} секунд", expiresIn);
+            log.info("📅 `access_token` истекает (UTC): {}", tokenExpiry);
+
+            if (googleRefreshToken.isEmpty()) {
+                log.warn("⚠️ У Google отсутствует `refresh_token`! Возможно, это первый вход или он уже был использован.");
+            }
+
+            // 🔹 Получаем email, имя и аватар
             String email = oidcUser.getEmail();
             String fullName = oidcUser.getFullName();
             String avatarUrl = oidcUser.getPicture();
@@ -53,6 +78,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
 
             log.info("🔍 OAuth User Info: email={}, nick={}, avatarUrl={}", email, nick, avatarUrl);
 
+            // 🔹 Проверяем, есть ли пользователь в базе
             Optional<User> optionalUser = userRepository.findByEmail(email);
             User user = optionalUser.orElseGet(() -> {
                 User newUser = new User();
@@ -60,49 +86,29 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                 newUser.setNick(nick);
                 newUser.setAvatarUrl(avatarUrl);
                 newUser.setRole(Roles.ROLE_USER);
-                log.info("🆕 New user registered: {}", email);
+                log.info("🆕 Новый пользователь зарегистрирован: {}", email);
                 return userRepository.save(newUser);
             });
 
-            // ✅ Получаем access_token и refresh_token из OIDC токена
-            String googleAccessToken = oidcUser.getIdToken().getTokenValue();
-            OidcIdToken idToken = oidcUser.getIdToken();
-            String googleRefreshToken = idToken.getClaims().getOrDefault("refresh_token", "").toString();
-
-            // 🔍 Получаем `exp` (время истечения токена) и вычисляем `expires_in`
-            Instant tokenExpiry = idToken.getExpiresAt();
-            long expiresIn = Duration.between(Instant.now(), tokenExpiry).getSeconds();
-
-            log.info("🔍 Google OAuth Tokens: accessToken={}, refreshToken={}", googleAccessToken, googleRefreshToken);
-            log.info("🔑 Новый access_token: {}", googleAccessToken);
-            log.info("⏳ expires_in: {} секунд", expiresIn);
-            log.info("📅 Дата истечения (UTC): {}", tokenExpiry);
-
-            // ✅ Сохраняем access_token и его срок действия
+            // 🔹 Сохраняем токены в БД
             user.setGoogleAccessToken(googleAccessToken);
             user.setGoogleTokenExpiry(tokenExpiry);
 
-            // ✅ Сохраняем refresh_token, если он есть
             if (!googleRefreshToken.isEmpty()) {
                 user.setGoogleRefreshToken(googleRefreshToken);
-            } else {
-                log.warn("⚠️ У Google отсутствует refresh_token! Возможно, это первый вход или он уже был использован.");
             }
 
-            // ✅ Сохраняем пользователя в базу
             userRepository.save(user);
-            log.info("✅ Google Access Token сохранён в базе для пользователя: {}", user.getEmail());
+            log.info("✅ Токены Google сохранены в базе для пользователя: {}", user.getEmail());
 
-            // ✅ Генерация JWT токена
+            // 🔹 Генерация JWT токена
             String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
             log.info("🔑 Generated JWT: {}", jwt);
 
             if (jwt == null || jwt.isEmpty()) {
                 log.error("❌ Ошибка: JWT не сгенерирован!");
             } else {
-                // ✅ Устанавливаем JWT в Cookie
                 boolean isSecure = request.isSecure();
-
                 ResponseCookie accessTokenCookie = ResponseCookie.from("jwt-token", jwt)
                         .httpOnly(true)
                         .secure(isSecure)
@@ -115,7 +121,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                 log.info("🍪 JWT сохранён в Cookie: {}", accessTokenCookie);
             }
 
-            // ✅ Перенаправление пользователя после логина
+            // 🔹 Перенаправление пользователя
             String redirectUrl = "http://localhost:4200/dashboard";
             log.info("➡ Перенаправляем пользователя на {}", redirectUrl);
             response.sendRedirect(redirectUrl);
@@ -123,6 +129,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             log.error("❌ Ошибка аутентификации: не OIDC пользователь");
             response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
         }
+
     }
 
 }

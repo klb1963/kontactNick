@@ -29,15 +29,15 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RestTemplate restTemplate;  // ✅ Добавляем RestTemplate
-    private final UserGoogleTokenService userGoogleTokenService;
+    private final GoogleTokenService googleTokenService;
 
 
-    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, RestTemplate restTemplate, UserGoogleTokenService userGoogleTokenService) {
+    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, RestTemplate restTemplate, GoogleTokenService googleTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.restTemplate = restTemplate;
-        this.userGoogleTokenService = userGoogleTokenService;
+        this.googleTokenService = googleTokenService;
     }
 
     // 👨register new user
@@ -166,7 +166,7 @@ public class UserService {
     }
 
     public String getUserAccessToken(User user) {
-        return userGoogleTokenService.getValidAccessToken(user);
+        return googleTokenService.getValidAccessToken(user);
     }
 
 }
