@@ -37,6 +37,7 @@ public class GoogleTokenService {
     @Value("${GOOGLE_REDIRECT_URI}")
     private String redirectUri;
 
+    private static final String AUTH_URL = "https://accounts.google.com/o/oauth2/auth";
     private static final String TOKEN_URL = "https://oauth2.googleapis.com/token";
 
     public GoogleTokenService(UserRepository userRepository, RestTemplate restTemplate) {
@@ -48,6 +49,18 @@ public class GoogleTokenService {
     public void logGoogleConfig() {
         log.info("🔍 Google Client ID: {}", clientId);
         log.info("🔍 Google Redirect URI: {}", redirectUri);
+    }
+
+    /**
+     * ✅ Генерация OAuth URL
+     */
+    public String getAuthUrl() {
+        return AUTH_URL + "?client_id=" + clientId +
+                "&redirect_uri=" + redirectUri +
+                "&response_type=code" +
+                "&scope=https://www.googleapis.com/auth/contacts https://www.googleapis.com/auth/userinfo.profile" +
+                "&access_type=offline" +
+                "&prompt=consent";
     }
 
     /**
@@ -188,6 +201,36 @@ public class GoogleTokenService {
         } catch (Exception e) {
             log.error("❌ Исключение при обновлении access_token: {}", e.getMessage());
             throw new IllegalStateException("Ошибка при обновлении access_token", e);
+        }
+    }
+
+    /**
+     * ✅ Запрос refresh_token от Google API, используя access_token
+     */
+    public String fetchRefreshToken(String accessToken) {
+        log.info("🔄 Получаем refresh_token через access_token...");
+
+        MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
+        requestParams.add("client_id", clientId);
+        requestParams.add("client_secret", clientSecret);
+        requestParams.add("grant_type", "refresh_token");
+        requestParams.add("access_token", accessToken);
+
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    TOKEN_URL, HttpMethod.POST, new HttpEntity<>(requestParams), new ParameterizedTypeReference<>() {}
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                log.info("✅ Refresh token успешно получен!");
+                return (String) response.getBody().getOrDefault("refresh_token", "");
+            } else {
+                log.error("❌ Ошибка получения refresh_token: {}", response);
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("❌ Исключение при запросе refresh_token: {}", e.getMessage());
+            return null;
         }
     }
 }

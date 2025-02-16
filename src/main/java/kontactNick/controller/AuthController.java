@@ -4,33 +4,27 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import kontactNick.dto.GoogleUser;
 import kontactNick.dto.LoginDto;
 import kontactNick.dto.UserDto;
-import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
 import kontactNick.security.util.JwtTokenProvider;
-import kontactNick.service.GoogleOAuthService;
+import kontactNick.service.GoogleTokenService;
 import kontactNick.service.TokenService;
 import kontactNick.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -43,7 +37,7 @@ public class AuthController {
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenService tokenService;
-    private final GoogleOAuthService googleOAuthService;
+    private final GoogleTokenService googleTokenService;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserDto userDto) {
@@ -76,7 +70,7 @@ public class AuthController {
         log.info("🔗 External login requested for provider: {}", provider);
         String authUrl = provider.equalsIgnoreCase("github") ?
                 "https://github.com/login/oauth/authorize?client_id=" + System.getenv("GITHUB_CLIENT_ID") + "&scope=user" :
-                googleOAuthService.getAuthUrl();  // ✅ Теперь генерируется автоматически
+                 googleTokenService.getAuthUrl();  // ✅ Теперь генерируется автоматически
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Access-Control-Allow-Origin", "http://localhost:4200");
