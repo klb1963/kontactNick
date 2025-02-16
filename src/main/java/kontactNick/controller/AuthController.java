@@ -27,6 +27,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -42,11 +43,8 @@ public class AuthController {
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenService tokenService;
-    private final GoogleOAuthService googleOAuthService;  // ✅ Сервис для работы с Google OAuth
+    private final GoogleOAuthService googleOAuthService;
 
-    /**
-     * ✅ Регистрация нового пользователя
-     */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserDto userDto) {
         userService.register(userDto);
@@ -54,98 +52,35 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "User registered successfully"));
     }
 
-    /**
-     * ✅ Аутентификация пользователя и выдача JWT
-     */
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginDto loginDto,
-                                                     HttpServletResponse response) {
+    public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginDto loginDto, HttpServletResponse response) {
         log.debug("🔑 Login request received: email={}", loginDto.getEmail());
 
-        // 🔐 Аутентификация пользователя
         String newToken = userService.authenticate(loginDto.getEmail(), loginDto.getPassword());
-
         if (!StringUtils.hasText(newToken)) {
             log.warn("❌ Invalid login attempt: {}", loginDto.getEmail());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Collections.singletonMap("error", "Invalid email or password"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Collections.singletonMap("error", "Invalid email or password"));
         }
 
-        // ✅ Создаём и добавляем НОВЫЙ JWT в HttpOnly Cookie
         ResponseCookie accessTokenCookie = tokenService.generateCookie(newToken);
         response.setHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-
         log.info("✅ Login successful, new token issued for {}", loginDto.getEmail());
         return ResponseEntity.ok(Map.of("token", newToken));
     }
 
     /**
-     * ✅ Получение OAuth URL для Google / GitHub
+     * ✅ Получение OAuth URL (Google/GitHub)
      */
     @GetMapping("/external-login")
     public ResponseEntity<String> getExternalAuthUrl(@RequestParam(name = "provider", defaultValue = "google") String provider) {
         log.info("🔗 External login requested for provider: {}", provider);
-
-        String authUrl;
-        switch (provider.toLowerCase()) {
-            case "github":
-                authUrl = "https://github.com/login/oauth/authorize?client_id=YOUR_GITHUB_CLIENT_ID&scope=user";
-                break;
-            case "google":
-            default:
-                authUrl = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code"
-                        + "&client_id=YOUR_GOOGLE_CLIENT_ID"
-                        + "&redirect_uri=http://localhost:8080/login/oauth2/code/google"
-                        + "&scope=openid%20profile%20email"
-                        + "&state=state_value";
-                break;
-        }
+        String authUrl = provider.equalsIgnoreCase("github") ?
+                "https://github.com/login/oauth/authorize?client_id=" + System.getenv("GITHUB_CLIENT_ID") + "&scope=user" :
+                googleOAuthService.getAuthUrl();  // ✅ Теперь генерируется автоматически
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Access-Control-Allow-Origin", "http://localhost:4200");
-
         return ResponseEntity.ok().headers(headers).body(authUrl);
-    }
-
-    /**
-     * ✅ Обрабатываем редирект Google OAuth2, сохраняем токен
-     */
-    @GetMapping("/oauth/google")
-    public ResponseEntity<Map<String, String>> handleGoogleOAuth(@RequestParam("code") String authCode) {
-        log.info("🔑 Google OAuth callback received, exchanging code for token...");
-
-        // 🔄 Обмениваем `code` на `access_token`
-        String googleAccessToken = googleOAuthService.exchangeCodeForAccessToken(authCode);
-        if (googleAccessToken == null) {
-            log.error("❌ Failed to exchange Google auth code for access token!");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid Google authentication"));
-        }
-
-        // 🔍 Получаем данные пользователя из Google API
-        GoogleUser googleUser = userService.getGoogleUserInfo(googleAccessToken);
-        if (googleUser == null) {
-            log.warn("❌ Failed to fetch Google user info.");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid Google access token"));
-        }
-
-        // ✅ Создаём/обновляем пользователя в системе
-        User user = userService.registerOrUpdateGoogleUser(googleUser);
-
-        // ✅ Генерируем наш JWT-токен
-        log.info("🚀 Generating new JWT for Google user: {}", user.getEmail());
-        String jwtToken = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
-
-        // ✅ Сохраняем Google Access Token в базе
-        tokenService.storeGoogleAccessToken(user.getEmail(), googleAccessToken);
-
-        // ✅ Отправляем JWT в HttpOnly Cookie
-        ResponseCookie accessTokenCookie = tokenService.generateCookie(jwtToken);
-
-        log.info("✅ Google Login Successful: {}", user.getEmail());
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
-                .body(Map.of("token", jwtToken, "email", user.getEmail(), "role", user.getRole().name()));
     }
 
     /**
@@ -156,7 +91,6 @@ public class AuthController {
         if (userDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User is not authenticated"));
         }
-
         String googleToken = tokenService.getGoogleAccessTokenForUser(userDetails.getUsername());
         if (googleToken == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Google token not found"));
@@ -182,7 +116,6 @@ public class AuthController {
                 }
             }
         }
-
         log.warn("❌ Token not found in cookies");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token not found"));
     }
@@ -205,38 +138,12 @@ public class AuthController {
      * ✅ Выход из системы (Logout)
      */
     @PostMapping("/logout")
-    @CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")  // ✅ Разрешаем отправку куки с фронта
     public ResponseEntity<?> logout(HttpServletResponse response) {
         log.info("🔴 Logging out user...");
-
-        // Удаляем куку JWT
-        ResponseCookie accessTokenCookie = ResponseCookie.from("jwt-token", "")
-                .httpOnly(true)
-                .secure(false)  // ✅ Для работы с localhost используем false
-                .sameSite("Lax") // ✅ Устанавливаем SameSite для поддержки кросс-доменных запросов
-                .path("/")
-                .maxAge(0) // ✅ Немедленное удаление куки
-                .build();
-
+        ResponseCookie accessTokenCookie = ResponseCookie.from("jwt-token", "").httpOnly(true).secure(false).sameSite("Lax").path("/").maxAge(0).build();
         response.setHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-
         log.info("✅ Logout successful");
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
-    }
-
-    @GetMapping("/google-access-token")
-    public ResponseEntity<?> getGoogleAccessToken(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User not authenticated"));
-        }
-
-        // 🔍 Получаем токен из базы или сессии пользователя
-        String googleToken = tokenService.getGoogleAccessTokenForUser(userDetails.getUsername());
-        if (googleToken == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Google Access Token not found"));
-        }
-
-        return ResponseEntity.ok(Map.of("accessToken", googleToken));
     }
 
 }

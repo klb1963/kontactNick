@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +20,7 @@ import java.util.Map;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final UserGoogleTokenService userGoogleTokenService;
+    private final GoogleTokenService googleTokenService;
     private final RestTemplate restTemplate;
 
     // 📖 Получение категорий пользователя
@@ -38,7 +37,7 @@ public class CategoryService {
 
         // 🔄 Создаём группу в Google Contacts
         try {
-            String accessToken = userGoogleTokenService.getValidAccessToken(user);
+            String accessToken = googleTokenService.getValidAccessToken(user);
             String googleResourceName = createGoogleContactGroup(category.getName(), accessToken);
 
             if (googleResourceName != null) {
@@ -62,7 +61,7 @@ public class CategoryService {
 
         if (category.getGoogleResourceName() != null) {
             try {
-                String accessToken = userGoogleTokenService.getValidAccessToken(user);
+                String accessToken = googleTokenService.getValidAccessToken(user);
                 updateGoogleContactGroup(category.getGoogleResourceName(), newName, accessToken);
                 log.info("✅ Группа в Google Contacts обновлена: {}", newName);
             } catch (Exception e) {
