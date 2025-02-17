@@ -1,6 +1,13 @@
 package kontactNick.service;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.jackson2.JacksonFactory;
 import jakarta.annotation.PostConstruct;
 import kontactNick.entity.Roles;
 import kontactNick.entity.User;
@@ -15,6 +22,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import com.auth0.jwt.JWT;
@@ -37,7 +45,6 @@ public class GoogleTokenService {
     @Value("${GOOGLE_REDIRECT_URI}")
     private String redirectUri;
 
-    private static final String AUTH_URL = "https://accounts.google.com/o/oauth2/auth";
     private static final String TOKEN_URL = "https://oauth2.googleapis.com/token";
 
     public GoogleTokenService(UserRepository userRepository, RestTemplate restTemplate) {
@@ -45,105 +52,96 @@ public class GoogleTokenService {
         this.restTemplate = restTemplate;
     }
 
-    @PostConstruct
-    public void logGoogleConfig() {
-        log.info("🔍 Google Client ID: {}", clientId);
-        log.info("🔍 Google Redirect URI: {}", redirectUri);
-    }
-
     /**
-     * ✅ Генерация OAuth URL
+     * ✅ Генерирует OAuth2 URL для входа через Google.
      */
     public String getAuthUrl() {
-        return AUTH_URL + "?client_id=" + clientId +
-                "&redirect_uri=" + redirectUri +
-                "&response_type=code" +
-                "&scope=https://www.googleapis.com/auth/contacts https://www.googleapis.com/auth/userinfo.profile" +
-                "&access_type=offline" +
-                "&prompt=consent";
+        return "https://accounts.google.com/o/oauth2/auth"
+                + "?client_id=" + clientId
+                + "&redirect_uri=" + redirectUri
+                + "&response_type=code"
+                + "&scope=https://www.googleapis.com/auth/contacts https://www.googleapis.com/auth/userinfo.profile"
+                + "&access_type=offline"
+                + "&prompt=consent"
+                + "&include_granted_scopes=true"; // Добавляем этот параметр для получения refresh_token;
     }
 
     /**
-     * 1️⃣ Получает authorization_code, обменивает его на токены и обновляет пользователя
+     * ✅ Декодирует id_token и возвращает payload с email, именем и аватаром.
      */
-    public void handleGoogleLogin(String authorizationCode) {
-        log.info("📥 Получен authorization_code: {}", authorizationCode);
+    public GoogleIdToken.Payload decodeGoogleIdToken(String idToken) {
+        try {
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new JacksonFactory())
+                    .setAudience(Collections.singletonList(clientId))
+                    .build();
 
-        // 2️⃣ Обмен кода на токены
-        Optional<Map<String, String>> tokensOpt = exchangeAuthorizationCodeForTokens(authorizationCode);
-        if (tokensOpt.isEmpty() || !tokensOpt.get().containsKey("id_token")) {
-            log.error("❌ Ошибка обмена кода на токены!");
-            throw new IllegalStateException("Ошибка получения токенов Google");
+            GoogleIdToken googleIdToken = verifier.verify(idToken);
+            return googleIdToken != null ? googleIdToken.getPayload() : null;
+        } catch (Exception e) {
+            log.error("❌ Ошибка при валидации ID токена: {}", e.getMessage());
+            return null;
         }
+    }
 
-        Map<String, String> tokens = tokensOpt.get();
-        String idToken = tokens.get("id_token");
-
-        // 3️⃣ Декодируем id_token для получения email пользователя
-        String email = JwtUtils.extractEmailFromIdToken(idToken);
-        // System.out.println("📧 Email пользователя: " + email);
-
-        if (email == null || email.isEmpty()) {
-            log.error("❌ Ошибка: не удалось получить email из id_token!");
-            throw new IllegalStateException("Не удалось получить email из id_token");
-        }
-
-        // 4️⃣ Проверяем, есть ли пользователь в базе
-        User user = userRepository.findByEmail(email).orElseGet(() -> {
+    /**
+     * ✅ Создаёт или возвращает пользователя по email.
+     */
+    public User getOrCreateUserByEmail(String email, String name, String picture) {
+        return userRepository.findByEmail(email).orElseGet(() -> {
             User newUser = new User();
             newUser.setEmail(email);
-            newUser.setNick(email.substring(0, email.indexOf("@")));
+            newUser.setNick(name);
+            newUser.setAvatarUrl(picture);
             newUser.setRole(Roles.ROLE_USER);
             log.info("🆕 Новый пользователь зарегистрирован: {}", email);
             return userRepository.save(newUser);
         });
-
-        // 5️⃣ Сохраняем полученные токены в БД
-        user.setGoogleAccessToken(tokens.get("access_token"));
-        user.setGoogleTokenExpiry(Instant.now().plusSeconds(3600)); // 1 час
-        user.setGoogleRefreshToken(tokens.getOrDefault("refresh_token", ""));
-
-        userRepository.save(user);
-        log.info("✅ Токены сохранены для пользователя: {}", user.getEmail());
     }
 
     /**
-     * 2️⃣ Обмен authorization_code на access_token + refresh_token
+     * 🔄 Обмен authorization_code на access_token + refresh_token
      */
     public Optional<Map<String, String>> exchangeAuthorizationCodeForTokens(String authorizationCode) {
-        log.info("🔄 Обмен access_code на токены");
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-        MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
-        requestParams.add("client_id", clientId);
-        requestParams.add("client_secret", clientSecret);
-        requestParams.add("code", authorizationCode);
-        requestParams.add("grant_type", "authorization_code");
-        requestParams.add("redirect_uri", redirectUri);
+        MultiValueMap<String, String> requestBody = new LinkedMultiValueMap<>();
+        requestBody.add("code", authorizationCode);
+        requestBody.add("client_id", clientId);
+        requestBody.add("client_secret", clientSecret);
+        requestBody.add("redirect_uri", redirectUri);
+        requestBody.add("grant_type", "authorization_code");
+
+        HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                "https://oauth2.googleapis.com/token",
+                HttpMethod.POST,
+                requestEntity,
+                String.class
+        );
+
+        // Логируем полный ответ от Google
+        log.info("🔍 Google OAuth Response: {}", responseEntity.getBody());
+
+        if (responseEntity.getStatusCode() != HttpStatus.OK) {
+            log.error("❌ Ошибка получения токенов от Google: {}", responseEntity.getBody());
+            return Optional.empty();
+        }
 
         try {
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    TOKEN_URL, HttpMethod.POST, new HttpEntity<>(requestParams), new ParameterizedTypeReference<>() {}
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                log.info("✅ Успешно получены токены от Google!");
-                return Optional.of(Map.of(
-                        "access_token", (String) response.getBody().get("access_token"),
-                        "refresh_token", (String) response.getBody().getOrDefault("refresh_token", ""),
-                        "id_token", (String) response.getBody().get("id_token")
-                ));
-            } else {
-                log.error("❌ Ошибка получения токенов от Google: {}", response);
-                return Optional.empty();
-            }
-        } catch (Exception e) {
-            log.error("❌ Исключение при обмене кода на токены: {}", e.getMessage());
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, String> tokens = objectMapper.readValue(responseEntity.getBody(), new TypeReference<>() {});
+            return Optional.of(tokens);
+        } catch (JsonProcessingException e) {
+            log.error("❌ Ошибка обработки JSON-ответа Google", e);
             return Optional.empty();
         }
     }
 
     /**
-     * 3️⃣ Возвращает актуальный access_token пользователя.
+     * ✅ Возвращает актуальный access_token пользователя.
      * Если токен истёк, обновляет его через refresh_token.
      */
     public String getValidAccessToken(User user) {
@@ -163,7 +161,7 @@ public class GoogleTokenService {
     }
 
     /**
-     * 4️⃣ Обновляет access_token с помощью refresh_token
+     * 🔄 Обновляет access_token с помощью refresh_token
      */
     private String refreshAccessToken(User user) {
         log.info("🔄 Обновление access_token через refresh_token для {}", user.getEmail());
@@ -204,33 +202,4 @@ public class GoogleTokenService {
         }
     }
 
-    /**
-     * ✅ Запрос refresh_token от Google API, используя access_token
-     */
-    public String fetchRefreshToken(String accessToken) {
-        log.info("🔄 Получаем refresh_token через access_token...");
-
-        MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
-        requestParams.add("client_id", clientId);
-        requestParams.add("client_secret", clientSecret);
-        requestParams.add("grant_type", "refresh_token");
-        requestParams.add("access_token", accessToken);
-
-        try {
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    TOKEN_URL, HttpMethod.POST, new HttpEntity<>(requestParams), new ParameterizedTypeReference<>() {}
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                log.info("✅ Refresh token успешно получен!");
-                return (String) response.getBody().getOrDefault("refresh_token", "");
-            } else {
-                log.error("❌ Ошибка получения refresh_token: {}", response);
-                return null;
-            }
-        } catch (Exception e) {
-            log.error("❌ Исключение при запросе refresh_token: {}", e.getMessage());
-            return null;
-        }
-    }
 }

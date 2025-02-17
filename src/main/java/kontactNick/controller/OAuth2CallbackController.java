@@ -50,7 +50,6 @@ public class OAuth2CallbackController {
         }
 
         Map<String, String> tokens = tokensOptional.get();
-
         String idToken = tokens.get("id_token");
         String accessToken = tokens.get("access_token");
         String refreshToken = tokens.getOrDefault("refresh_token", "");
@@ -59,7 +58,7 @@ public class OAuth2CallbackController {
         log.info("✅ Google ID Token: {}", idToken);
 
         // 2️⃣ Декодируем id_token, чтобы получить информацию о пользователе
-        GoogleIdToken.Payload payload = decodeGoogleIdToken(idToken);
+        GoogleIdToken.Payload payload = googleTokenService.decodeGoogleIdToken(idToken);
         if (payload == null) {
             log.error("❌ Ошибка декодирования id_token!");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Ошибка декодирования id_token");
@@ -69,20 +68,19 @@ public class OAuth2CallbackController {
         String name = (String) payload.get("name");
         String picture = (String) payload.get("picture");
 
-        // 3️⃣ Проверяем, есть ли пользователь в базе
-        User user = userRepository.findByEmail(email).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setEmail(email);
-            newUser.setNick(name);
-            newUser.setAvatarUrl(picture);
-            newUser.setRole(Roles.ROLE_USER);
-            log.info("🆕 Новый пользователь зарегистрирован: {}", email);
-            return userRepository.save(newUser);
-        });
+        // 3️⃣ Получаем или создаём пользователя
+        User user = googleTokenService.getOrCreateUserByEmail(email, name, picture);
 
         // 4️⃣ Обновляем токены в БД
         user.setGoogleAccessToken(accessToken);
-        user.setGoogleRefreshToken(refreshToken);
+
+        // Если refresh_token пришёл от Google, обновляем его
+        if (!refreshToken.isEmpty()) {
+            user.setGoogleRefreshToken(refreshToken);
+        } else if (user.getGoogleRefreshToken() == null || user.getGoogleRefreshToken().isEmpty()) {
+            log.warn("⚠️ Пользователь {} не имеет refresh_token. Ему потребуется повторная авторизация при истечении access_token.", email);
+        }
+
         user.setGoogleTokenExpiry(Instant.now().plusSeconds(3600));
         userRepository.save(user);
 
@@ -104,19 +102,4 @@ public class OAuth2CallbackController {
         // 7️⃣ Перенаправляем пользователя на фронтенд
         return ResponseEntity.ok(Map.of("redirect", "http://localhost:4200/dashboard"));
     }
-
-    private GoogleIdToken.Payload decodeGoogleIdToken(String idToken) {
-        try {
-            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new JacksonFactory())
-                    .setAudience(Collections.singletonList(System.getenv("GOOGLE_CLIENT_ID")))
-                    .build();
-
-            GoogleIdToken googleIdToken = verifier.verify(idToken);
-            return googleIdToken != null ? googleIdToken.getPayload() : null;
-        } catch (Exception e) {
-            log.error("Ошибка при валидации ID токена: {}", e.getMessage());
-            return null;
-        }
-    }
-
 }
