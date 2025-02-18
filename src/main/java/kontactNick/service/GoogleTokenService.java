@@ -9,6 +9,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 import kontactNick.entity.Roles;
 import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
@@ -25,6 +26,8 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
@@ -35,6 +38,7 @@ import static org.springframework.security.config.Elements.JWT;
 public class GoogleTokenService {
     private final UserRepository userRepository;
     private final RestTemplate restTemplate;
+    private final UserService userService;
 
     @Value("${GOOGLE_CLIENT_ID}")
     private String clientId;
@@ -47,9 +51,10 @@ public class GoogleTokenService {
 
     private static final String TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-    public GoogleTokenService(UserRepository userRepository, RestTemplate restTemplate) {
+    public GoogleTokenService(UserRepository userRepository, RestTemplate restTemplate, UserService userService) {
         this.userRepository = userRepository;
         this.restTemplate = restTemplate;
+        this.userService = userService;
     }
 
     /**
@@ -63,7 +68,7 @@ public class GoogleTokenService {
                 + "&scope=https://www.googleapis.com/auth/contacts https://www.googleapis.com/auth/userinfo.profile"
                 + "&access_type=offline"
                 + "&prompt=consent"
-                + "&include_granted_scopes=true"; // Добавляем этот параметр для получения refresh_token;
+                + "&include_granted_scopes=true";
     }
 
     /**
@@ -84,25 +89,9 @@ public class GoogleTokenService {
     }
 
     /**
-     * ✅ Создаёт или возвращает пользователя по email.
-     */
-    public User getOrCreateUserByEmail(String email, String name, String picture) {
-        return userRepository.findByEmail(email).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setEmail(email);
-            newUser.setNick(name);
-            newUser.setAvatarUrl(picture);
-            newUser.setRole(Roles.ROLE_USER);
-            log.info("🆕 Новый пользователь зарегистрирован: {}", email);
-            return userRepository.save(newUser);
-        });
-    }
-
-    /**
      * 🔄 Обмен authorization_code на access_token + refresh_token
      */
     public Optional<Map<String, String>> exchangeAuthorizationCodeForTokens(String authorizationCode) {
-        RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
@@ -115,29 +104,19 @@ public class GoogleTokenService {
 
         HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<String> responseEntity = restTemplate.exchange(
-                "https://oauth2.googleapis.com/token",
-                HttpMethod.POST,
-                requestEntity,
-                String.class
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                TOKEN_URL, HttpMethod.POST, requestEntity, new ParameterizedTypeReference<>() {}
         );
 
-        // Логируем полный ответ от Google
-        log.info("🔍 Google OAuth Response: {}", responseEntity.getBody());
-
-        if (responseEntity.getStatusCode() != HttpStatus.OK) {
-            log.error("❌ Ошибка получения токенов от Google: {}", responseEntity.getBody());
+        if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
+            log.error("❌ Ошибка получения токенов от Google: {}", response);
             return Optional.empty();
         }
 
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, String> tokens = objectMapper.readValue(responseEntity.getBody(), new TypeReference<>() {});
-            return Optional.of(tokens);
-        } catch (JsonProcessingException e) {
-            log.error("❌ Ошибка обработки JSON-ответа Google", e);
-            return Optional.empty();
-        }
+        Map<String, String> tokens = response.getBody().entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> String.valueOf(e.getValue())));
+
+        return Optional.of(tokens);
     }
 
     /**
@@ -145,7 +124,7 @@ public class GoogleTokenService {
      * Если токен истёк, обновляет его через refresh_token.
      */
     public String getValidAccessToken(User user) {
-        log.info("🔍 Проверяем актуальный access_token для {}", user.getEmail());
+        log.info("🔍 Проверяем access_token для {}", user.getEmail());
 
         if (user.getGoogleAccessToken() == null) {
             log.error("❌ Нет access_token для {}", user.getEmail());
@@ -153,7 +132,7 @@ public class GoogleTokenService {
         }
 
         if (user.getGoogleTokenExpiry() == null || Instant.now().isAfter(user.getGoogleTokenExpiry())) {
-            log.warn("⚠️ Access token для {} истёк. Обновляем...", user.getEmail());
+            log.warn("⚠️ Access token истёк. Обновляем...");
             return refreshAccessToken(user);
         }
 
@@ -164,7 +143,7 @@ public class GoogleTokenService {
      * 🔄 Обновляет access_token с помощью refresh_token
      */
     private String refreshAccessToken(User user) {
-        log.info("🔄 Обновление access_token через refresh_token для {}", user.getEmail());
+        log.info("🔄 Обновление access_token для {}", user.getEmail());
 
         if (user.getGoogleRefreshToken() == null || user.getGoogleRefreshToken().isEmpty()) {
             log.error("❌ Нет refresh_token для {}", user.getEmail());
@@ -184,7 +163,7 @@ public class GoogleTokenService {
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 String newAccessToken = (String) response.getBody().get("access_token");
-                int expiresIn = (Integer) response.getBody().get("expires_in");
+                int expiresIn = (Integer) response.getBody().getOrDefault("expires_in", 3600);
 
                 user.setGoogleAccessToken(newAccessToken);
                 user.setGoogleTokenExpiry(Instant.now().plusSeconds(expiresIn));
@@ -202,4 +181,11 @@ public class GoogleTokenService {
         }
     }
 
+    /**
+     * ✅ Создаёт или обновляет пользователя в БД
+     */
+    @Transactional
+    public User getOrCreateUser(String email, String nick, String avatarUrl) {
+        return userService.getOrCreateUser(email, nick, avatarUrl);
+    }
 }
