@@ -69,7 +69,7 @@ public class OAuth2CallbackController {
         String picture = (String) payload.get("picture");
 
         // 3️⃣ Получаем или создаём пользователя
-        User user = googleTokenService.getOrCreateUserByEmail(email, name, picture);
+        User user = googleTokenService.getOrCreateUser(email, name, picture);
 
         // 4️⃣ Обновляем токены в БД
         user.setGoogleAccessToken(accessToken);

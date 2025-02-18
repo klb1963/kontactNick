@@ -1,14 +1,9 @@
 package kontactNick.service;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
-import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import kontactNick.entity.Roles;
 import kontactNick.entity.User;
@@ -28,17 +23,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
-
-import static org.springframework.security.config.Elements.JWT;
-
 @Slf4j
 @Service
 public class GoogleTokenService {
+
     private final UserRepository userRepository;
     private final RestTemplate restTemplate;
-    private final UserService userService;
 
     @Value("${GOOGLE_CLIENT_ID}")
     private String clientId;
@@ -54,7 +44,6 @@ public class GoogleTokenService {
     public GoogleTokenService(UserRepository userRepository, RestTemplate restTemplate, UserService userService) {
         this.userRepository = userRepository;
         this.restTemplate = restTemplate;
-        this.userService = userService;
     }
 
     /**
@@ -186,6 +175,15 @@ public class GoogleTokenService {
      */
     @Transactional
     public User getOrCreateUser(String email, String nick, String avatarUrl) {
-        return userService.getOrCreateUser(email, nick, avatarUrl);
+        return userRepository.findByEmail(email).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setEmail(email);
+            newUser.setNick(nick);
+            newUser.setAvatarUrl(avatarUrl);
+            newUser.setRole(Roles.ROLE_USER);
+            log.info("🆕 Новый пользователь зарегистрирован: {}", email);
+            return userRepository.save(newUser);
+        });
     }
+
 }
