@@ -24,6 +24,8 @@ import org.springframework.web.util.WebUtils;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
 
@@ -34,12 +36,10 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
-    private final TokenService tokenService;
 
-    public CustomAuthenticationSuccessHandler(UserRepository userRepository, JwtTokenProvider jwtTokenProvider, TokenService tokenService) {
+    public CustomAuthenticationSuccessHandler(UserRepository userRepository, JwtTokenProvider jwtTokenProvider) {
         this.userRepository = userRepository;
         this.jwtTokenProvider = jwtTokenProvider;
-        this.tokenService = tokenService;
     }
 
     @Override
@@ -47,6 +47,13 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         log.info("✅ [CustomAuthenticationSuccessHandler] Вызван с аутентификацией: {}", authentication);
         log.info("✅ OAuth Login Success: {}", authentication.getName());
         log.info("🔍 Principal class: {}", authentication.getPrincipal().getClass().getName());
+
+        //================================================================
+        System.out.println("🔍 Проверка времени: " + Instant.now());
+        log.info("⏳ Instant.now(): {}", Instant.now());
+        log.info("📅 Токен истекает в (UTC): {}", Instant.now().plusSeconds(3600));
+        log.info("🕒 Локальное время: {}", LocalDateTime.now());
+        log.info("🕒 Время в UTC: {}", LocalDateTime.now(ZoneOffset.UTC));
 
         if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
             log.info("✅ [CustomAuthenticationSuccessHandler] Вошли в OidcUser блок");
@@ -65,6 +72,9 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             log.info("🔍 Google OAuth Tokens: accessToken={}, refreshToken={}", googleAccessToken, googleRefreshToken);
             log.info("⏳ `access_token` истекает через {} секунд", expiresIn);
             log.info("📅 `access_token` истекает (UTC): {}", tokenExpiry);
+
+            // 🔹 Добавлен лог `expires_in` из Google
+            log.info("🔍 `expires_in` из Google: {}", claims.get("exp"));
 
             if (googleRefreshToken.isEmpty()) {
                 log.warn("⚠️ У Google отсутствует `refresh_token`! Возможно, это первый вход или он уже был использован.");
@@ -129,7 +139,6 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             log.error("❌ Ошибка аутентификации: не OIDC пользователь");
             response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
         }
-
     }
 
 }

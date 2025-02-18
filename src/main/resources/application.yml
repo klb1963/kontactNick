@@ -37,7 +37,9 @@ spring:
         provider:
           google:
             authorization-uri: "https://accounts.google.com/o/oauth2/auth?access_type=offline&prompt=consent"
-            token-uri: https://oauth2.googleapis.com/token
+            token-uri: "https://oauth2.googleapis.com/token"
+            user-info-uri: "https://www.googleapis.com/oauth2/v3/userinfo"
+            user-name-attribute: sub
 
   web:
     cors:
@@ -67,4 +69,4 @@ jwt:
   expiration-ms: 604800000 # 7 дней (7 * 24 * 60 * 60 * 1000)
 
 frontend:
-  url: http://localhost:4200
+  url: "http://localhost:4200"

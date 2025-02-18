@@ -46,6 +46,24 @@ public class GoogleTokenService {
         this.restTemplate = restTemplate;
     }
 
+    public boolean isAccessTokenExpired(User user) {
+        if (user.getGoogleTokenExpiry() == null) {
+            log.warn("⚠️ Время истечения токена отсутствует! Считаем его недействительным.");
+            return true;
+        }
+
+        Instant now = Instant.now();
+        Instant tokenExpiry = user.getGoogleTokenExpiry();
+
+        boolean expired = now.isAfter(tokenExpiry);
+
+        log.info("⏳ Текущее время: {}", now);
+        log.info("🔍 Время истечения токена: {}", tokenExpiry);
+        log.info("⚠️ Токен истёк? {}", expired ? "ДА" : "НЕТ");
+
+        return expired;
+    }
+
     /**
      * ✅ Генерирует OAuth2 URL для входа через Google.
      */
@@ -57,7 +75,7 @@ public class GoogleTokenService {
                 + "&scope=https://www.googleapis.com/auth/contacts https://www.googleapis.com/auth/userinfo.profile"
                 + "&access_type=offline"
                 + "&prompt=consent"
-                + "&include_granted_scopes=true";
+                + "&include_granted_scopes=true"; // ✅ Этот параметр помогает получать refresh_token
     }
 
     /**
@@ -120,7 +138,7 @@ public class GoogleTokenService {
             throw new IllegalStateException("Access token отсутствует: " + user.getEmail());
         }
 
-        if (user.getGoogleTokenExpiry() == null || Instant.now().isAfter(user.getGoogleTokenExpiry())) {
+        if (isAccessTokenExpired(user)) {
             log.warn("⚠️ Access token истёк. Обновляем...");
             return refreshAccessToken(user);
         }
