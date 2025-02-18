@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { UserRegistrationComponent } from './user-registration/user-registration.component';
-import { LoginComponent } from './login/login.component';
+import { LoginComponent } from './user-login/login.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { AuthGuard } from './auth.guard';
 import { CategoryFieldsComponent } from './category-fields/category-fields.component';

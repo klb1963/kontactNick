@@ -10,7 +10,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { first } from 'rxjs';
 
 @Component({
-  selector: 'app-login',
+  selector: 'app-user-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css'],
   standalone: true,
