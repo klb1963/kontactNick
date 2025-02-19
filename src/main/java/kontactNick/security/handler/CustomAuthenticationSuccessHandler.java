@@ -15,6 +15,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -36,51 +40,21 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final OAuth2AuthorizedClientService authorizedClientService;
 
-    public CustomAuthenticationSuccessHandler(UserRepository userRepository, JwtTokenProvider jwtTokenProvider) {
+    public CustomAuthenticationSuccessHandler(UserRepository userRepository, JwtTokenProvider jwtTokenProvider, OAuth2AuthorizedClientService authorizedClientService) {
         this.userRepository = userRepository;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.authorizedClientService = authorizedClientService;
     }
 
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        log.info("✅ [CustomAuthenticationSuccessHandler] Вызван с аутентификацией: {}", authentication);
-        log.info("✅ OAuth Login Success: {}", authentication.getName());
-        log.info("🔍 Principal class: {}", authentication.getPrincipal().getClass().getName());
-
-        //================================================================
-        System.out.println("🔍 Проверка времени: " + Instant.now());
-        log.info("⏳ Instant.now(): {}", Instant.now());
-        log.info("📅 Токен истекает в (UTC): {}", Instant.now().plusSeconds(3600));
-        log.info("🕒 Локальное время: {}", LocalDateTime.now());
-        log.info("🕒 Время в UTC: {}", LocalDateTime.now(ZoneOffset.UTC));
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
+        log.info("✅ [CustomAuthenticationSuccessHandler] Аутентификация успешна: {}", authentication.getName());
 
         if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
-            log.info("✅ [CustomAuthenticationSuccessHandler] Вошли в OidcUser блок");
+            log.info("🔍 Обрабатываем OIDC пользователя");
 
-            OidcIdToken idToken = oidcUser.getIdToken();
-            Map<String, Object> claims = idToken.getClaims();
-            log.info("🔍 Все claims в токене: {}", claims);
-
-            String googleAccessToken = idToken.getTokenValue();
-            String googleRefreshToken = claims.getOrDefault("refresh_token", "").toString();
-
-            // Проверяем срок действия токена
-            Instant tokenExpiry = idToken.getExpiresAt();
-            long expiresIn = Duration.between(Instant.now(), tokenExpiry).getSeconds();
-
-            log.info("🔍 Google OAuth Tokens: accessToken={}, refreshToken={}", googleAccessToken, googleRefreshToken);
-            log.info("⏳ `access_token` истекает через {} секунд", expiresIn);
-            log.info("📅 `access_token` истекает (UTC): {}", tokenExpiry);
-
-            // 🔹 Добавлен лог `expires_in` из Google
-            log.info("🔍 `expires_in` из Google: {}", claims.get("exp"));
-
-            if (googleRefreshToken.isEmpty()) {
-                log.warn("⚠️ У Google отсутствует `refresh_token`! Возможно, это первый вход или он уже был использован.");
-            }
-
-            // 🔹 Получаем email, имя и аватар
             String email = oidcUser.getEmail();
             String fullName = oidcUser.getFullName();
             String avatarUrl = oidcUser.getPicture();
@@ -100,16 +74,36 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                 return userRepository.save(newUser);
             });
 
-            // 🔹 Сохраняем токены в БД
-            user.setGoogleAccessToken(googleAccessToken);
-            user.setGoogleTokenExpiry(tokenExpiry);
+            // 🔹 Получаем `OAuth2AuthorizedClient`
+            OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient("google", authentication.getName());
 
-            if (!googleRefreshToken.isEmpty()) {
-                user.setGoogleRefreshToken(googleRefreshToken);
+            // ✅ Добавляем проверку и логирование
+            if (authorizedClient == null) {
+                log.warn("⚠️ OAuth2AuthorizedClient не найден, возможно, пользователь только что зарегистрировался.");
+            }
+
+            OAuth2AccessToken accessToken = authorizedClient != null ? authorizedClient.getAccessToken() : null;
+            OAuth2RefreshToken refreshToken = authorizedClient != null ? authorizedClient.getRefreshToken() : null;
+
+            if (accessToken != null) {
+                Instant tokenExpiry = accessToken.getExpiresAt();
+                long expiresIn = Duration.between(Instant.now(), tokenExpiry).getSeconds();
+
+                user.setGoogleAccessToken(accessToken.getTokenValue());
+                user.setGoogleTokenExpiry(tokenExpiry);
+                log.info("✅ Google Access Token сохранен, истекает через {} секунд", expiresIn);
+            } else {
+                log.error("❌ Ошибка: Google Access Token отсутствует!");
+            }
+
+            if (refreshToken != null) {
+                user.setGoogleRefreshToken(refreshToken.getTokenValue());
+                log.info("✅ Google Refresh Token сохранен.");
+            } else {
+                log.warn("⚠️ У Google отсутствует `refresh_token`, возможно, не был запрошен `access_type=offline`.");
             }
 
             userRepository.save(user);
-            log.info("✅ Токены Google сохранены в базе для пользователя: {}", user.getEmail());
 
             // 🔹 Генерация JWT токена
             String jwt = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
@@ -136,9 +130,8 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             log.info("➡ Перенаправляем пользователя на {}", redirectUrl);
             response.sendRedirect(redirectUrl);
         } else {
-            log.error("❌ Ошибка аутентификации: не OIDC пользователь");
+            log.error("❌ Ошибка: пользователь не является OIDC пользователем");
             response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
         }
     }
-
 }

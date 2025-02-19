@@ -2,7 +2,7 @@ spring:
   config:
     import: optional:file:.env[.properties]
   application:
-    name: contaktnick
+    name: kontactnick
 
   datasource:
     url: jdbc:postgresql://localhost:5432/kontactnick_db
@@ -70,3 +70,6 @@ jwt:
 
 frontend:
   url: "http://localhost:4200"
+
+github:
+  client-id: klb1963

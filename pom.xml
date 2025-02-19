@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.contaktnick</groupId>
-	<artifactId>contaktnick</artifactId>
+	<artifactId>kontactnick</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>kontactnick</name>
 	<description>Contacts Exchange Platform</description>

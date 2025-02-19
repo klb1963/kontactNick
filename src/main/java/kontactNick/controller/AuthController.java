@@ -13,6 +13,7 @@ import kontactNick.service.TokenService;
 import kontactNick.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -32,6 +33,9 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
+    @Value("${github.client-id}")
+    private String githubClientId;
 
     private final UserRepository userRepository;
     private final UserService userService;
@@ -69,26 +73,27 @@ public class AuthController {
     public ResponseEntity<String> getExternalAuthUrl(@RequestParam(name = "provider", defaultValue = "google") String provider) {
         log.info("🔗 External login requested for provider: {}", provider);
         String authUrl = provider.equalsIgnoreCase("github") ?
-                "https://github.com/login/oauth/authorize?client_id=" + System.getenv("GITHUB_CLIENT_ID") + "&scope=user" :
-                 googleTokenService.getAuthUrl();  // ✅ Теперь генерируется автоматически
+                "https://github.com/login/oauth/authorize?client_id=" + githubClientId + "&scope=user" :
+                googleTokenService.getAuthUrl();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Access-Control-Allow-Origin", "http://localhost:4200");
-        return ResponseEntity.ok().headers(headers).body(authUrl);
+        return ResponseEntity.ok(authUrl);
     }
 
     /**
-     * ✅ Получение Google Access Token (для фронтенда)
+     * ✅ Получение Google Access Token
      */
     @GetMapping("/google-token")
     public ResponseEntity<Map<String, String>> getGoogleToken(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
+            log.warn("❌ User is not authenticated");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User is not authenticated"));
         }
         String googleToken = tokenService.getGoogleAccessTokenForUser(userDetails.getUsername());
         if (googleToken == null) {
+            log.warn("❌ Google token not found for user {}", userDetails.getUsername());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Google token not found"));
         }
+        log.info("✅ Retrieved Google token for user {}", userDetails.getUsername());
         return ResponseEntity.ok(Map.of("googleAccessToken", googleToken));
     }
 
@@ -104,13 +109,15 @@ public class AuthController {
                     String jwt = cookie.getValue();
                     if (jwt != null && tokenService.validateToken(jwt)) {
                         String email = jwtTokenProvider.getUsernameFromToken(jwt);
-                        log.info("✅ Retrieved token for user: {}", email);
+                        log.info("✅ Token retrieved for user: {}", email);
                         return ResponseEntity.ok(Map.of("token", jwt));
+                    } else {
+                        log.warn("❌ Invalid or expired JWT token in cookie");
                     }
                 }
             }
         }
-        log.warn("❌ Token not found in cookies");
+        log.debug("🔍 No valid token found in cookies");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token not found"));
     }
 

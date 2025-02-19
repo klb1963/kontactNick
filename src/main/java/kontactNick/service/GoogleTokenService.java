@@ -8,7 +8,6 @@ import jakarta.transaction.Transactional;
 import kontactNick.entity.Roles;
 import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
-import kontactNick.security.util.JwtUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
