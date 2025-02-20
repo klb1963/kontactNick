@@ -112,4 +112,22 @@ public class UserService {
     public Optional<User> getUserByEmail(String email) {
         return userRepository.findByEmail(email);
     }
+
+    /**
+     * ✅ Обновляет пользователя по его email
+     */
+    public void updateUser(User user) {
+        userRepository.save(user);
+        log.info("🔄 Данные пользователя обновлены в БД: {}", user.getEmail());
+    }
+
+    public User handleOAuthUser(String email, String nick, String avatarUrl) {
+        User user = getOrCreateUser(email, nick, avatarUrl);
+        log.info("🔄 Обновлён OAuth-пользователь: {}", email);
+        return user;
+    }
+
+    public String generateJwtForUser(User user) {
+        return jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
+    }
 }
