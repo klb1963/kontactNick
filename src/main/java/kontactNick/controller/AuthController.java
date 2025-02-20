@@ -1,11 +1,13 @@
 package kontactNick.controller;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import kontactNick.dto.LoginDto;
 import kontactNick.dto.UserDto;
+import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
 import kontactNick.security.util.JwtTokenProvider;
 import kontactNick.service.GoogleTokenService;
@@ -24,8 +26,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -77,6 +81,48 @@ public class AuthController {
                 googleTokenService.getAuthUrl();
 
         return ResponseEntity.ok(authUrl);
+    }
+
+    /**
+     * ✅ Обмен access_code на токены (access и refresh) от Google
+     */
+    @GetMapping("/google/callback")
+    public ResponseEntity<?> googleCallback(@RequestParam("code") String authorizationCode) {
+        log.info("📥 Получен authorization_code: {}", authorizationCode);
+
+        Optional<Map<String, String>> tokensOptional = googleTokenService.exchangeAuthorizationCodeForTokens(authorizationCode);
+
+        if (tokensOptional.isEmpty()) {
+            log.error("❌ Ошибка при обмене authorization_code на токены");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Ошибка авторизации через Google");
+        }
+
+        Map<String, String> tokens = tokensOptional.get();
+        String idToken = tokens.get("id_token");
+
+        if (idToken == null) {
+            log.error("❌ Ошибка: ID токен отсутствует в ответе Google");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Ошибка получения ID токена");
+        }
+
+        // 🔥 Декодируем ID токен
+        GoogleIdToken.Payload payload = googleTokenService.decodeGoogleIdToken(idToken);
+        if (payload == null) {
+            log.error("❌ Ошибка: не удалось декодировать ID токен");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Ошибка валидации ID токена");
+        }
+
+        // 🆕 Обновляем данные пользователя
+        User user = userService.getOrCreateUser(payload.getEmail(), (String) payload.get("name"), (String) payload.get("picture"));
+
+        user.setGoogleAccessToken(tokens.get("access_token"));
+        user.setGoogleRefreshToken(tokens.get("refresh_token"));
+        user.setGoogleTokenExpiry(Instant.now().plusSeconds(Integer.parseInt(tokens.get("expires_in"))));
+        userService.updateUser(user);
+
+        log.info("✅ Данные пользователя обновлены: {}", user.getEmail());
+
+        return ResponseEntity.ok("Токены успешно сохранены");
     }
 
     /**

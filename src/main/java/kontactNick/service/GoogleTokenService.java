@@ -119,6 +119,7 @@ public class GoogleTokenService {
             return Optional.empty();
         }
 
+        // ✅ Метод ТОЛЬКО получает токены, а не создаёт пользователя!
         Map<String, String> tokens = response.getBody().entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> String.valueOf(e.getValue())));
 
