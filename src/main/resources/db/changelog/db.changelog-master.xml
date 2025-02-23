@@ -15,5 +15,6 @@
     <include file="db/changelog/db.changelog-2025-02-06-rename-fields.xml"/>
     <include file="db/changelog/db.changelog-2025-02-09-add-google-tokens.xml"/>
     <include file="db/changelog/db.changelog-2025-02-09-add-google-resource-name-to-categories.xml"/>
+    <include file="db/changelog/2025-02-23-add-name-to-users.xml"/>
 
 </databaseChangeLog>

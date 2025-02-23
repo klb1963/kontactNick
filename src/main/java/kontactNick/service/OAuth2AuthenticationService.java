@@ -1,5 +1,6 @@
 package kontactNick.service;
 
+import jakarta.transaction.Transactional;
 import kontactNick.entity.Roles;
 import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
@@ -34,16 +35,23 @@ public class OAuth2AuthenticationService {
     private final RestTemplate restTemplate;
     private final UserRepository userRepository;
 
+    @Transactional
     public String processUserAuthentication(OidcUser oidcUser, OAuth2AuthorizedClient authorizedClient) {
         String email = oidcUser.getEmail();
         log.info("🔍 OAuth User Info: email={}", email);
+        log.info("🔍 OIDC User Attributes: {}", oidcUser.getAttributes()); // Логируем атрибуты пользователя
 
-        User user = (User) oidcUser.getAttributes().get("user");
-        if (user == null) {
-            throw new IllegalStateException("❌ Пользователь не найден в OidcUser атрибутах: " + email);
-        }
+        User user = userRepository.findByEmail(email).orElseGet(() -> {
+            log.warn("⚠️ Пользователь с email {} не найден, создаем нового...", email);
+            User newUser = new User();
+            newUser.setEmail(email);
+            newUser.setName((String) oidcUser.getAttribute("name"));
+            newUser.setAvatarUrl((String) oidcUser.getAttribute("picture"));
+            newUser.setRole(Roles.ROLE_USER);
+            return userRepository.save(newUser);
+        });
 
-        // 🔹 Проверяем, что у `authorizedClient` есть токены
+        // 🔹 Проверяем, что `authorizedClient` содержит Access Token
         if (authorizedClient == null || authorizedClient.getAccessToken() == null) {
             log.error("❌ Ошибка: access_token отсутствует у OAuth2AuthorizedClient");
             throw new IllegalStateException("Access token отсутствует.");
@@ -57,6 +65,7 @@ public class OAuth2AuthenticationService {
             expiresAt = Instant.now().plusSeconds(3600); // 1 час по умолчанию
         }
 
+        // 🔹 Сохраняем Google токены в БД
         user.setGoogleAccessToken(accessToken);
         user.setGoogleRefreshToken(refreshToken);
         user.setGoogleTokenExpiry(expiresAt);
@@ -65,7 +74,7 @@ public class OAuth2AuthenticationService {
         userRepository.save(user);
         log.info("✅ Google токены сохранены для {}", email);
 
-        // 🔹 Генерируем JWT-токен
+        // 🔹 Генерируем JWT-токен и возвращаем
         return jwtTokenProvider.generateToken(user.getEmail(), Roles.ROLE_USER.name());
     }
 

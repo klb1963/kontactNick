@@ -27,6 +27,9 @@ public class User {
     @Column(unique = true, nullable = true)
     private String nick;
 
+    @Column(nullable = true) // ✅ Добавляем поле "name" для хранения полного имени пользователя
+    private String name;
+
     @Column(nullable = false, unique = true) // ✅ Email должен быть уникальным
     private String email;
 
@@ -38,7 +41,7 @@ public class User {
     private Roles role;
 
     @Column(nullable = true)
-    private String avatarUrl; // ✅ Добавили поле для ссылки на аватар
+    private String avatarUrl; // ✅ Это соответствует "picture" из Google OAuth
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY) // ✅ Оптимизированная загрузка
     @JsonManagedReference
@@ -53,6 +56,3 @@ public class User {
     @Column(nullable = true)
     private Instant googleTokenExpiry;
 }
-
-
-

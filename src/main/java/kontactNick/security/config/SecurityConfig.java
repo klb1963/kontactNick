@@ -2,14 +2,14 @@ package kontactNick.security.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kontactNick.security.config.JwtAuthenticationFilter;
+import kontactNick.config.OAuth2AuthorizedClientServiceConfig;
 import kontactNick.service.CustomOidcUserService;
 import kontactNick.service.OAuth2AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseCookie;
@@ -25,7 +25,10 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
@@ -40,7 +43,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -53,6 +55,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOidcUserService customOidcUserService;
     private final OAuth2AuthenticationService oAuth2AuthenticationService;
+    private final OAuth2AuthorizedClientService authorizedClientService; // ✅ Добавлено
+
+    private final Environment environment;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -77,6 +82,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/fields/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/categories/**/fields/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/contact-log/add").authenticated()
+                        .requestMatchers("/api/auth/check").authenticated()
                         .requestMatchers(
                                 "/oauth2/**",
                                 "/login/oauth2/**",
@@ -112,17 +118,49 @@ public class SecurityConfig {
      */
     private void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
         log.info("✅ Успешная аутентификация: {}", authentication.getName());
+        log.info("🔍 Authentication Principal Class: {}", authentication.getPrincipal().getClass().getName());
 
         if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
-            OAuth2AuthorizedClient authorizedClient = getAuthorizedClient(request, authentication);
-            if (authorizedClient == null) {
-                log.error("❌ Не удалось получить OAuth2AuthorizedClient");
+            log.info("🔍 OIDC User: {}", oidcUser.getAttributes());
+
+            // 🔹 Получаем OAuth2AuthorizedClient
+            String clientRegistrationId = "google"; // Используем Google OAuth2
+            String principalName = authentication.getName(); // Обычно email или sub
+
+            OAuth2AuthorizedClient authorizedClient =
+                    authorizedClientService.loadAuthorizedClient(clientRegistrationId, principalName);
+
+            if (authorizedClient == null || authorizedClient.getAccessToken() == null) {
+                log.error("❌ Ошибка: не удалось получить OAuth2AuthorizedClient или Access Token отсутствует");
                 response.sendRedirect("http://localhost:4200/login?error=oauth_client_error");
                 return;
             }
 
-            // 🔹 Передаём пользователя и токены в `OAuth2AuthenticationService`
-            String jwtToken = oAuth2AuthenticationService.processUserAuthentication(oidcUser, authorizedClient);
+            log.info("🔎 Проверяем OAuth2AuthorizedClient: {}", authorizedClient);
+            log.info("🔎 Access Token: {}", authorizedClient.getAccessToken().getTokenValue());
+            log.info("🔎 Refresh Token: {}",
+                    authorizedClient.getRefreshToken() != null ? authorizedClient.getRefreshToken().getTokenValue() : "null");
+
+            // 🔹 Сохраняем пользователя в БД и получаем JWT
+            log.info("🔄 Передаём пользователя в processUserAuthentication: {}", oidcUser.getEmail());
+            String jwtToken = null;
+
+            try {
+                log.info("🔄 Перед вызовом processUserAuthentication...");
+                jwtToken = oAuth2AuthenticationService.processUserAuthentication(oidcUser, authorizedClient);
+                log.info("✅ JWT-токен успешно сгенерирован!");
+            } catch (Exception e) {
+                log.error("❌ Ошибка в processUserAuthentication: {}", e.getMessage(), e);
+                response.sendRedirect("http://localhost:4200/login?error=auth_processing_failed");
+                return;
+            }
+
+            // 🔹 Проверяем, что jwtToken не null
+            if (jwtToken == null || jwtToken.isEmpty()) {
+                log.error("❌ Ошибка: JWT-токен не был сгенерирован!");
+                response.sendRedirect("http://localhost:4200/login?error=jwt_generation_failed");
+                return;
+            }
 
             // 🔹 Устанавливаем JWT в cookie
             ResponseCookie jwtCookie = ResponseCookie.from("jwt-token", jwtToken)
@@ -139,7 +177,8 @@ public class SecurityConfig {
             // 🔹 Перенаправляем пользователя на фронтенд
             response.sendRedirect("http://localhost:4200/dashboard");
         } else {
-            log.error("❌ Ошибка: пользователь не является OIDC пользователем");
+            log.error("❌ Ошибка: пользователь не является OIDC пользователем (Class: {})",
+                    authentication.getPrincipal().getClass().getName());
             response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
         }
     }
@@ -168,14 +207,4 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-
-    /**
-     * ✅ Получает OAuth2AuthorizedClient из контекста
-     */
-    private OAuth2AuthorizedClient getAuthorizedClient(HttpServletRequest request, Authentication authentication) {
-        OAuth2AuthorizedClientService clientService = new InMemoryOAuth2AuthorizedClientService(new InMemoryClientRegistrationRepository());
-        OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
-        return clientService.loadAuthorizedClient(oauthToken.getAuthorizedClientRegistrationId(), oauthToken.getName());
-    }
-
 }
