@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import kontactNick.dto.GoogleUser;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import kontactNick.dto.UserDto;
 import kontactNick.entity.Roles;
@@ -18,25 +19,20 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
 import java.util.Optional;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
-    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder,
-                       JwtTokenProvider jwtTokenProvider) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtTokenProvider = jwtTokenProvider;
-    }
-
     /**
-     * ✅ Регистрирует нового пользователя
+     * ✅ Регистрирует нового пользователя по email и password
      */
     public void register(UserDto userDto) {
         if (userRepository.existsByEmail(userDto.getEmail())) {
@@ -68,24 +64,15 @@ public class UserService {
             throw new BadCredentialsException("Неверный email или пароль");
         }
 
+        // 🔹 Можно добавить обновление времени последнего входа, если нужно
+        // user.setLastLogin(Instant.now());
+
+        // 💾 Сохраняем пользователя в базе данных
+        userRepository.save(user);
+        log.info("💾 Сохраняем пользователя в базе данных: {}", user.getEmail());
+
         log.info("🚀 Генерация JWT для пользователя: {}", email);
         return jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
-    }
-
-    /**
-     * ✅ Получает или создаёт пользователя
-     */
-    @Transactional
-    public User getOrCreateUser(String email, String nick, String avatarUrl) {
-        return userRepository.findByEmail(email).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setEmail(email);
-            newUser.setNick(nick);
-            newUser.setAvatarUrl(avatarUrl);
-            newUser.setRole(Roles.ROLE_USER);
-            log.info("🆕 Новый пользователь зарегистрирован: {}", email);
-            return userRepository.save(newUser);
-        });
     }
 
     /**
@@ -104,30 +91,5 @@ public class UserService {
             return nick != null ? nick : "Unknown";
         }
         return "Unknown";
-    }
-
-    /**
-     * ✅ Получает пользователя по его email
-     */
-    public Optional<User> getUserByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
-
-    /**
-     * ✅ Обновляет пользователя по его email
-     */
-    public void updateUser(User user) {
-        userRepository.save(user);
-        log.info("🔄 Данные пользователя обновлены в БД: {}", user.getEmail());
-    }
-
-    public User handleOAuthUser(String email, String nick, String avatarUrl) {
-        User user = getOrCreateUser(email, nick, avatarUrl);
-        log.info("🔄 Обновлён OAuth-пользователь: {}", email);
-        return user;
-    }
-
-    public String generateJwtForUser(User user) {
-        return jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
     }
 }

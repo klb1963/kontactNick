@@ -35,12 +35,10 @@ import java.util.stream.Collectors;
 public class ApiController {
 
     private final UserRepository userRepository;
-    private final UserService userService;
 
     @Autowired
-    public ApiController(UserRepository userRepository, UserService userService) {
+    public ApiController(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.userService = userService;
     }
 
     // ✅ Главная страница API
@@ -79,7 +77,7 @@ public class ApiController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Email is missing"));
         }
 
-        Optional<User> userOpt = userService.getUserByEmail(email);
+        Optional<User> userOpt = userRepository.findByEmail(email);
 
         if (userOpt.isEmpty()) {
             log.warn("❌ Пользователь с email {} не найден в базе данных", email);

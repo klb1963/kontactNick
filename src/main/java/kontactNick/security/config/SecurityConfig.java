@@ -1,23 +1,32 @@
 package kontactNick.security.config;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kontactNick.security.handler.CustomAuthenticationSuccessHandler;
+import kontactNick.security.config.JwtAuthenticationFilter;
 import kontactNick.service.CustomOidcUserService;
+import kontactNick.service.OAuth2AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.web.AuthenticatedPrincipalOAuth2AuthorizedClientRepository;
-import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -26,9 +35,12 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -40,9 +52,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOidcUserService customOidcUserService;
-
-    @Lazy
-    private final CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
+    private final OAuth2AuthenticationService oAuth2AuthenticationService;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -78,7 +88,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.oidcUserService(customOidcUserService))
-                        .successHandler(customAuthenticationSuccessHandler)
+                        .successHandler(this::onAuthenticationSuccess)
                         .failureHandler(customFailureHandler())
                 )
                 .logout(logout -> logout.logoutSuccessUrl("/").permitAll())
@@ -97,6 +107,43 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * ✅ Обработчик успешной аутентификации через Google OAuth2
+     */
+    private void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
+        log.info("✅ Успешная аутентификация: {}", authentication.getName());
+
+        if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
+            OAuth2AuthorizedClient authorizedClient = getAuthorizedClient(request, authentication);
+            if (authorizedClient == null) {
+                log.error("❌ Не удалось получить OAuth2AuthorizedClient");
+                response.sendRedirect("http://localhost:4200/login?error=oauth_client_error");
+                return;
+            }
+
+            // 🔹 Передаём пользователя и токены в `OAuth2AuthenticationService`
+            String jwtToken = oAuth2AuthenticationService.processUserAuthentication(oidcUser, authorizedClient);
+
+            // 🔹 Устанавливаем JWT в cookie
+            ResponseCookie jwtCookie = ResponseCookie.from("jwt-token", jwtToken)
+                    .httpOnly(true)
+                    .secure(false) // true для HTTPS
+                    .path("/")
+                    .maxAge(Duration.ofDays(7))
+                    .sameSite("Lax")
+                    .build();
+            response.setHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
+
+            log.info("✅ JWT-токен создан и передан пользователю {}", oidcUser.getEmail());
+
+            // 🔹 Перенаправляем пользователя на фронтенд
+            response.sendRedirect("http://localhost:4200/dashboard");
+        } else {
+            log.error("❌ Ошибка: пользователь не является OIDC пользователем");
+            response.sendRedirect("http://localhost:4200/login?error=authentication_failed");
+        }
+    }
+
     @Bean
     public AuthenticationFailureHandler customFailureHandler() {
         return (request, response, exception) -> {
@@ -107,13 +154,6 @@ public class SecurityConfig {
             }
             response.sendRedirect("/login?error=" + URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8));
         };
-    }
-
-    @Bean
-    public OAuth2AuthorizedClientRepository authorizedClientRepository(ClientRegistrationRepository clientRegistrationRepository) {
-        return new AuthenticatedPrincipalOAuth2AuthorizedClientRepository(
-                new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository)
-        );
     }
 
     @Bean
@@ -128,4 +168,14 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
+    /**
+     * ✅ Получает OAuth2AuthorizedClient из контекста
+     */
+    private OAuth2AuthorizedClient getAuthorizedClient(HttpServletRequest request, Authentication authentication) {
+        OAuth2AuthorizedClientService clientService = new InMemoryOAuth2AuthorizedClientService(new InMemoryClientRegistrationRepository());
+        OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
+        return clientService.loadAuthorizedClient(oauthToken.getAuthorizedClientRegistrationId(), oauthToken.getName());
+    }
+
 }

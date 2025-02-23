@@ -27,10 +27,7 @@ public class TokenService {
     @Value("${server.ssl.enabled:false}") // Читаем настройку SSL (true/false)
     private boolean isSecure;
 
-    private final JwtTokenProvider jwtTokenProvider; // Добавлен JwtTokenProvider
-
-    // ✅ Хранилище Google Access Token для пользователей
-    private final Map<String, String> googleTokens = new ConcurrentHashMap<>();
+    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * ✅ Генерирует HTTP-only cookie с JWT-токеном
@@ -87,28 +84,4 @@ public class TokenService {
             return false;
         }
     }
-
-    /**
-     * ✅ Сохраняет Google Access Token для пользователя
-     */
-    public void storeGoogleAccessToken(String email, String accessToken) {
-        googleTokens.put(email, accessToken);
-        log.info("✅ Google Access Token сохранен для: {}", email);
-    }
-
-    /**
-     * ✅ Получает Google Access Token для пользователя
-     */
-    public String getGoogleAccessTokenForUser(String email) {
-        return googleTokens.get(email);
-    }
-
-    /**
-     * ✅ Удаляет Google Access Token (например, при выходе)
-     */
-    public void removeGoogleAccessToken(String email) {
-        googleTokens.remove(email);
-        log.info("🔴 Google Access Token удален для: {}", email);
-    }
-
 }

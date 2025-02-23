@@ -55,17 +55,6 @@ export class UserRegistrationComponent {
 
     console.log('🔵 Redirecting to Google ...');
     window.location.href = 'http://localhost:8080/oauth2/authorization/google';
-
-    // const redirectUri = encodeURIComponent(environment.googleRedirectUri);
-    // const googleAuthUrl = `https://accounts.google.com/o/oauth2/auth
-    //   ?client_id=${environment.googleClientId}
-    //   &redirect_uri=${environment.googleRedirectUri}
-    //   &response_type=code
-    //   &scope=${encodeURIComponent('openid email profile https://www.googleapis.com/auth/contacts')}
-    //   &access_type=offline
-    //   &prompt=consent`.replace(/\s+/g, '');
-    // console.log('🔵 Redirecting to Google OAuth:', googleAuthUrl);
-    // window.location.href = googleAuthUrl;
   }
 
 }

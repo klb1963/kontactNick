@@ -20,8 +20,8 @@ import java.util.Map;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final GoogleTokenService googleTokenService;
     private final RestTemplate restTemplate;
+    private final OAuth2AuthenticationService oAuth2AuthenticationService;
 
     // 📖 Получение категорий пользователя
     public List<Category> getCategoriesByUserEmail(String email) {
@@ -37,7 +37,7 @@ public class CategoryService {
 
         // 🔄 Создаём группу в Google Contacts
         try {
-            String accessToken = googleTokenService.getValidAccessToken(user);
+            String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
             String googleResourceName = createGoogleContactGroup(category.getName(), accessToken);
 
             if (googleResourceName != null) {
@@ -61,7 +61,7 @@ public class CategoryService {
 
         if (category.getGoogleResourceName() != null) {
             try {
-                String accessToken = googleTokenService.getValidAccessToken(user);
+                String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
                 updateGoogleContactGroup(category.getGoogleResourceName(), newName, accessToken);
                 log.info("✅ Группа в Google Contacts обновлена: {}", newName);
             } catch (Exception e) {

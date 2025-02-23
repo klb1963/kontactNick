@@ -13,16 +13,16 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
 @Component
 public class CustomOidcUserService extends OidcUserService {
 
-    private final UserRepository userRepository;
-
-    public CustomOidcUserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public CustomOidcUserService() {
+        super();
     }
 
     @Override
@@ -32,28 +32,17 @@ public class CustomOidcUserService extends OidcUserService {
         // Получаем стандартного OIDC пользователя
         OidcUser oidcUser = super.loadUser(userRequest);
 
-        // Достаём email
+        // Достаём email пользователя
         String email = oidcUser.getEmail();
         log.info("🔍 Email пользователя: {}", email);
 
-        // Проверяем, есть ли пользователь в базе
-        Optional<User> optionalUser = userRepository.findByEmail(email);
-        User user = optionalUser.orElseGet(() -> {
-            log.info("🆕 Новый пользователь: {}", email);
-            User newUser = new User();
-            newUser.setEmail(email);
-            newUser.setNick(oidcUser.getFullName() != null ? oidcUser.getFullName() : email);
-            newUser.setAvatarUrl(oidcUser.getPicture());
-            newUser.setRole(Roles.ROLE_USER);
-            return userRepository.save(newUser);
-        });
+        // ✅ Теперь `CustomOidcUserService` НЕ отвечает за создание пользователя.
+        // ✅ Это делает `OAuth2AuthenticationService`.
 
-        // Возвращаем OIDC пользователя с обновлёнными атрибутами
         return new DefaultOidcUser(
-                Collections.singleton(new SimpleGrantedAuthority(user.getRole().name())),
+                Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
                 oidcUser.getIdToken(),
                 "email"
         );
     }
-
 }
