@@ -2,7 +2,6 @@ package kontactNick.security.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kontactNick.config.OAuth2AuthorizedClientServiceConfig;
 import kontactNick.service.CustomOidcUserService;
 import kontactNick.service.OAuth2AuthenticationService;
 import lombok.RequiredArgsConstructor;
@@ -11,32 +10,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -52,10 +42,22 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final String[] AUTH_WHITELIST = {
+            "/api/auth/**",
+            "/api/public/**",
+            "/oauth2/**",
+            "/login/oauth2/**",
+            "/login/oauth2/code/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/v3/api-docs.yaml"
+    };
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOidcUserService customOidcUserService;
     private final OAuth2AuthenticationService oAuth2AuthenticationService;
-    private final OAuth2AuthorizedClientService authorizedClientService; // ✅ Добавлено
+    private final OAuth2AuthorizedClientService authorizedClientService;
 
     private final Environment environment;
 
@@ -70,24 +72,12 @@ public class SecurityConfig {
 
         http
                 .cors(withDefaults())
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(CorsUtils::isPreFlightRequest).permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(AUTH_WHITELIST).permitAll()
                         .requestMatchers("/", "/home").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/profile").authenticated()
                         .requestMatchers("/api/categories/**").hasAuthority("ROLE_USER")
-                        .requestMatchers(HttpMethod.PUT, "/api/fields/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**/fields/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/contact-log/add").authenticated()
-                        .requestMatchers(
-                                "/oauth2/**",
-                                "/login/oauth2/**",
-                                "/login/oauth2/code/**",
-                                "/oauth/callback"
-                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -125,7 +115,6 @@ public class SecurityConfig {
             // 🔹 Получаем OAuth2AuthorizedClient
             String clientRegistrationId = "google"; // Используем Google OAuth2
             String principalName = authentication.getName(); // Обычно email или sub
-
             OAuth2AuthorizedClient authorizedClient =
                     authorizedClientService.loadAuthorizedClient(clientRegistrationId, principalName);
 
@@ -143,6 +132,10 @@ public class SecurityConfig {
             // 🔹 Сохраняем пользователя в БД и получаем JWT
             log.info("🔄 Передаём пользователя в processUserAuthentication: {}", oidcUser.getEmail());
             String jwtToken = null;
+
+            // в методе processUserAuthentication
+            // пользователя сохраняем в БД и все его токены из Google
+            // пользователю генерим jwtToken вызвав wtTokenProvider
 
             try {
                 log.info("🔄 Перед вызовом processUserAuthentication...");
