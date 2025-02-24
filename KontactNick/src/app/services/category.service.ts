@@ -11,6 +11,7 @@ export class CategoryService {
 
   constructor(private http: HttpClient) {}
 
+  /** ✅ Получение категории по ID */
   getCategoryById(categoryId: number): Observable<any> {
     return this.http.get(`${this.baseUrl}/categories/${categoryId}`, { withCredentials: true }).pipe(
       tap(category => console.log("✅ Category loaded:", category)),
@@ -21,6 +22,7 @@ export class CategoryService {
     );
   }
 
+  /** ✅ Получение полей категории */
   getCategoryFields(categoryId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.baseUrl}/categories/${categoryId}/fields`, { withCredentials: true }).pipe(
       tap(fields => console.log("📤 Fields loaded:", fields)),
@@ -31,6 +33,7 @@ export class CategoryService {
     );
   }
 
+  /** ✅ Добавление поля в категорию */
   addFieldToCategory(categoryId: number, field: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/categories/${categoryId}/field`, field, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Field added")),
@@ -41,6 +44,7 @@ export class CategoryService {
     );
   }
 
+  /** ✅ Обновление поля */
   updateField(categoryId: number, fieldId: number, field: any): Observable<any> {
     return this.http.put(`${this.baseUrl}/categories/${categoryId}/fields/${fieldId}`, field, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Field updated")),
@@ -51,6 +55,7 @@ export class CategoryService {
     );
   }
 
+  /** ✅ Удаление поля */
   deleteField(categoryId: number, fieldId: number): Observable<any> {
     return this.http.delete(`${this.baseUrl}/categories/${categoryId}/fields/${fieldId}`, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Field deleted")),
@@ -61,6 +66,7 @@ export class CategoryService {
     );
   }
 
+  /** ✅ Получение списка категорий пользователя */
   getUserCategories(): Observable<any[]> {
     return this.http.get<any[]>(`${this.baseUrl}/categories`, { withCredentials: true }).pipe(
       tap(categories => console.log("✅ Categories loaded:", categories)),
@@ -71,6 +77,7 @@ export class CategoryService {
     );
   }
 
+  /** ✅ Создание новой категории */
   createCategory(category: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/categories`, category, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Category created")),
@@ -81,6 +88,7 @@ export class CategoryService {
     );
   }
 
+  /** ✅ Обновление категории */
   updateCategory(categoryId: number, category: any): Observable<any> {
     return this.http.put(`${this.baseUrl}/categories/${categoryId}`, category, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Category updated")),
@@ -91,11 +99,56 @@ export class CategoryService {
     );
   }
 
+  /** ✅ Удаление категории */
   deleteCategory(categoryId: number): Observable<any> {
     return this.http.delete(`${this.baseUrl}/categories/${categoryId}`, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Category deleted")),
       catchError(error => {
         console.error("❌ Error deleting category:", error);
+        return of(null);
+      })
+    );
+  }
+
+  /** ✅ Создание категории (группы) в Google Contacts */
+  createGoogleCategory(category: { name: string }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/google/categories`, category, { withCredentials: true }).pipe(
+      tap(() => console.log("✅ Google category created")),
+      catchError(error => {
+        console.error("❌ Error creating Google category:", error);
+        return of(null);
+      })
+    );
+  }
+
+  /** ✅ Получение списка категорий (групп) из Google Contacts */
+  getGoogleCategories(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/google/categories`, { withCredentials: true }).pipe(
+      tap(categories => console.log("✅ Google categories loaded:", categories)),
+      catchError(error => {
+        console.error("❌ Error fetching Google categories:", error);
+        return of([]);
+      })
+    );
+  }
+
+  /** ✅ Добавление контакта в категорию Google Contacts */
+  addContactToGoogleCategory(categoryId: string, contactResourceName: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/google/categories/${categoryId}/add`, { resourceName: contactResourceName }, { withCredentials: true }).pipe(
+      tap(() => console.log("✅ Contact added to Google category")),
+      catchError(error => {
+        console.error("❌ Error adding contact to Google category:", error);
+        return of(null);
+      })
+    );
+  }
+
+  /** ✅ Удаление контакта из категории Google Contacts */
+  removeContactFromGoogleCategory(categoryId: string, contactResourceName: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/google/categories/${categoryId}/remove`, { resourceName: contactResourceName }, { withCredentials: true }).pipe(
+      tap(() => console.log("✅ Contact removed from Google category")),
+      catchError(error => {
+        console.error("❌ Error removing contact from Google category:", error);
         return of(null);
       })
     );

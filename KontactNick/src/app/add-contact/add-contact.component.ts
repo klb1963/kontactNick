@@ -27,7 +27,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 export class AddContactDialogComponent implements OnInit {
   categoryId: number;
   fields: any[] = [];
-  contactData: any = { firstName: '', nick: '', email: '', category: '', otherFields: {} };
+  contactData: any = { name: '', nick: '', email: '', phone: '', category: '', otherFields: {} };
   currentUserNick: string = '';
 
   constructor(
@@ -65,51 +65,54 @@ export class AddContactDialogComponent implements OnInit {
   }
 
   save(): void {
-    // ✅ Проверяем, есть ли поля name и email
     if (!this.contactData.name?.trim() || !this.contactData.email?.trim()) {
       alert("⚠️ Please enter a valid name and email!");
       return;
     }
 
-    // ✅ Преобразуем названия полей в формат, нужный Google
-    const googleContact = {
-      name: this.contactData.name,  // Используем name вместо firstName
-      nickname: this.contactData.nick || '',  // Никнейм необязателен
-      email: this.contactData.email,
-      phone: this.contactData.телефон || ''  // Если есть, добавляем телефон
+    // ✅ Создание объекта для Google API
+    const googleContact: any = {
+      name: this.contactData.name,
+      nickname: this.contactData.nick || '',
+      email: this.contactData.email
     };
 
-    // ✅ Все остальные данные сохраняем списком
+    // ✅ Добавляем телефон, если есть
+    if (this.contactData.phone?.trim()) {
+      googleContact.phoneNumbers = [{ value: this.contactData.phone }];
+    }
+
+    // ✅ Все остальные поля сохраняем списком
     const additionalFields = Object.keys(this.contactData)
-      .filter(key => !['name', 'nick', 'email', 'телефон'].includes(key))
+      .filter(key => !['name', 'nick', 'email', 'phone'].includes(key))
       .map(key => ({ field: key, value: this.contactData[key] }));
 
     console.log("📤 Saving to Google Contacts:", googleContact);
     console.log("📥 Additional fields:", additionalFields);
 
-    this.dialogRef.close(this.contactData);
     this.saveContactToGoogle(googleContact, additionalFields);
   }
 
   saveContactToGoogle(contact: any, additionalFields: any[]): void {
-    const accessToken = localStorage.getItem("googleAccessToken");
-    if (!accessToken) {
-      console.error("❌ No Google access token found!");
-      alert("⚠️ You need to log in with Google first!");
-      return;
-    }
-
-    this.googleContactsService.addToGoogleContacts(contact, accessToken).subscribe({
-      next: (response) => {
-        console.log("✅ Contact successfully added to Google Contacts!", response);
-        alert("✅ Контакт успешно добавлен в Google!");
-      },
-      error: (err) => {
-        console.error("❌ Error adding contact to Google:", err);
-        alert("❌ Ошибка при добавлении контакта в Google.");
+    this.authService.getGoogleAccessToken().subscribe((accessToken) => {  // ✅ Ждём, пока токен будет получен
+      if (!accessToken) {
+        console.error("❌ No Google access token found!");
+        alert("⚠️ You need to log in with Google first!");
+        return;
       }
-    });
 
+      this.googleContactsService.addToGoogleContacts(contact, accessToken).subscribe({
+        next: (response) => {
+          console.log("✅ Contact successfully added to Google Contacts!", response);
+          alert("✅ Контакт успешно добавлен в Google!");
+          this.dialogRef.close(this.contactData); // ✅ Закрываем только после успеха!
+        },
+        error: (err) => {
+          console.error("❌ Error adding contact to Google:", err);
+          alert("❌ Ошибка при добавлении контакта в Google.");
+        }
+      });
+    });
   }
 
   close(): void {

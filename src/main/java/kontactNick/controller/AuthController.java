@@ -106,6 +106,23 @@ public class AuthController {
     }
 
     /**
+     * ✅ Получение access_token Google
+     */
+    @GetMapping("/google-token")
+    public ResponseEntity<?> getGoogleToken(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("google-access-token".equals(cookie.getName())) {
+                    return ResponseEntity.ok(Map.of("token", cookie.getValue()));
+                }
+            }
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Google token not found"));
+    }
+
+
+    /**
      * ✅ Выход из системы (Logout)
      */
     @PostMapping("/logout")

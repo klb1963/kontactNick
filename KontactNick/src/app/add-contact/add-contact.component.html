@@ -1,22 +1,17 @@
 <h2 mat-dialog-title>➕ Add New Contact</h2>
 
 <mat-dialog-content>
-  <!-- Динамическая форма на основе полей категории -->
   <form #contactForm="ngForm">
-
-    <!-- Поле для ввода имени (обязательное) -->
     <mat-form-field appearance="outline" style="width: 100%;">
       <mat-label>Name</mat-label>
       <input matInput [(ngModel)]="contactData.name" name="name" required />
     </mat-form-field>
 
-    <!-- Поле для ввода email (обязательное) -->
     <mat-form-field appearance="outline" style="width: 100%;">
       <mat-label>Email</mat-label>
       <input matInput [(ngModel)]="contactData.email" name="email" type="email" required />
     </mat-form-field>
 
-    <!-- Поле для ввода ника (обязательное) -->
     <mat-form-field appearance="outline" style="width: 100%;">
       <mat-label>Nick (User to add)</mat-label>
       <input matInput [(ngModel)]="contactData.nick" name="nick" required />
@@ -28,17 +23,12 @@
     <div *ngFor="let field of fields" class="form-group">
       <mat-form-field appearance="outline" style="width: 100%;">
         <mat-label>{{ field.name }}</mat-label>
-
-        <!-- Динамический рендеринг полей в зависимости от типа -->
-        <input *ngIf="field.fieldType === 'text'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="text" [ngModelOptions]="{standalone: true}" />
-
-        <input *ngIf="field.fieldType === 'number'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="number" [ngModelOptions]="{standalone: true}" />
-
-        <input *ngIf="field.fieldType === 'email'" matInput [(ngModel)]="contactData[field.name]" name="{{ field.name }}" type="email" [ngModelOptions]="{standalone: true}" />
+        <input *ngIf="field.fieldType === 'text'" matInput [(ngModel)]="contactData[field.name]" [value]="contactData[field.name] || ''" name="{{ field.name }}" />
+        <input *ngIf="field.fieldType === 'number'" matInput [(ngModel)]="contactData[field.name]" [value]="contactData[field.name] || ''" name="{{ field.name }}" type="number" />
+        <input *ngIf="field.fieldType === 'email'" matInput [(ngModel)]="contactData[field.name]" [value]="contactData[field.name] || ''" name="{{ field.name }}" type="email" />
       </mat-form-field>
     </div>
 
-    <!-- Проверка, если нет полей -->
     <div *ngIf="fields.length === 0" style="color: gray; text-align: center; margin: 10px 0;">
       No fields defined for this category.
     </div>
@@ -47,8 +37,6 @@
 
 <mat-dialog-actions align="end">
   <button mat-button (click)="close()">Cancel</button>
-  <button mat-raised-button
-          color="primary"
-          (click)="save()"
+  <button mat-raised-button color="primary" (click)="save()"
           [disabled]="!contactForm.form.valid">Save to Google Contacts</button>
 </mat-dialog-actions>

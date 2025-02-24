@@ -1,29 +1,41 @@
 package kontactNick.controller;
 
 import kontactNick.service.GoogleContactsService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/google")
+@RequiredArgsConstructor
 public class GoogleContactsController {
 
     private final GoogleContactsService googleContactsService;
 
-    public GoogleContactsController(GoogleContactsService googleContactsService) {
-        this.googleContactsService = googleContactsService;
+    @GetMapping("/contacts")
+    public ResponseEntity<?> getGoogleContacts(@RequestHeader("Authorization") String authHeader) {
+        String accessToken = extractAccessToken(authHeader);
+        return googleContactsService.getContacts(accessToken);
     }
 
-    @PostMapping("/contacts")
-    public String addContact(@RequestHeader("Authorization") String token, @RequestBody Map<String, String> contact) {
-        try {
-            String accessToken = token.replace("Bearer ", "");
-            googleContactsService.addContact(accessToken, contact.get("firstName"), contact.get("lastName"), contact.get("email"));
-            return "Contact added successfully!";
-        } catch (IOException e) {
-            return "Error adding contact: " + e.getMessage();
-        }
+    @PostMapping("/categories")
+    public ResponseEntity<?> createGoogleCategory(@RequestHeader("Authorization") String authHeader,
+                                                  @RequestBody Map<String, String> request) {
+        String accessToken = extractAccessToken(authHeader);
+        return googleContactsService.createCategory(request.get("name"), accessToken);
+    }
+
+    @PostMapping("/add-to-category")
+    public ResponseEntity<?> addContactToCategory(@RequestHeader("Authorization") String authHeader,
+                                                  @RequestBody Map<String, String> request) {
+        String accessToken = extractAccessToken(authHeader);
+        return googleContactsService.addToCategory(request.get("categoryId"), request.get("contactId"), accessToken);
+    }
+
+    private String extractAccessToken(String authHeader) {
+        return authHeader.replace("Bearer ", "");
     }
 
 }

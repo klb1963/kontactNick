@@ -148,6 +148,7 @@ export class DashboardComponent implements OnInit {
     this.nickError = '';
   }
 
+  // диалоговое окно создания и сохранения категории
   openCategoryDialog(category: any = null) {
     const dialogRef = this.dialog.open(CategoryDialogComponent, {
       width: '400px',
@@ -156,11 +157,21 @@ export class DashboardComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
+
         const action = category
           ? this.categoryService.updateCategory(category.id, result)
           : this.categoryService.createCategory(result);
 
-        action.subscribe(() => this.loadCategories());
+        action.subscribe(() => {
+          this.loadCategories();
+
+          // ✅ После создания в БД создаем категорию в Google Contacts
+          this.categoryService.createGoogleCategory(result).subscribe(
+            () => console.log("✅ Категория создана в Google Contacts"),
+            (error) => console.error("❌ Ошибка при создании в Google:", error)
+          );
+        });
+
       }
     });
   }
