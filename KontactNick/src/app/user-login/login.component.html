@@ -1,6 +1,6 @@
 <div class="login-container">
   <h1 class="app-title">KontactNick</h1>
-  <p class="app-subtitle">Наведи порядок в своих Контактах</p>
+  <p class="app-subtitle">Organize your Contacts</p>
 
   <div class="form-container">
     <mat-form-field appearance="outline">
@@ -16,13 +16,13 @@
     <button mat-raised-button color="primary" (click)="login()" class="full-width">Login</button>
 
     <p class="register-link">
-      Нет аккаунта? <a [routerLink]="['/register']">Зарегистрироваться</a>
+      Don’t have an account? <a [routerLink]="['/register']">Register</a>
     </p>
 
     <hr />
 
     <button mat-raised-button color="accent" (click)="loginWithGoogle()" class="google-button">
-      Войти через Google
+      Login with Google
     </button>
 
     <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>

@@ -1,6 +1,6 @@
 <div class="register-container">
   <h1 class="app-title">KontactNick</h1>
-  <p class="app-subtitle">Наведи порядок в своих Контактах</p>
+  <p class="app-subtitle">Organize your Contacts</p>
 
   <div class="form-container">
     <mat-form-field appearance="outline">
@@ -18,16 +18,16 @@
       <input matInput type="password" [(ngModel)]="confirmPassword" name="confirmPassword" required />
     </mat-form-field>
 
-    <button mat-raised-button color="primary" (click)="register()" class="full-width">Регистрация</button>
+    <button mat-raised-button color="primary" (click)="register()" class="full-width">Register</button>
 
     <p class="login-link">
-      Уже есть аккаунт? <a [routerLink]="['/login']">Войти</a>
+      Already have an account? <a [routerLink]="['/login']">Login</a>
     </p>
 
     <hr />
 
     <button mat-raised-button color="accent" (click)="registerWithGoogle()" class="google-button">
-      Регистрация через Google
+      Register with Google
     </button>
 
     <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>

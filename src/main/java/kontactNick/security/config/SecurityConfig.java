@@ -55,7 +55,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOidcUserService customOidcUserService;
     private final OAuth2AuthenticationService oAuth2AuthenticationService;
-    private final OAuth2AuthorizedClientService authorizedClientService; // ✅ Добавлено
+    private final OAuth2AuthorizedClientService authorizedClientService;
 
     private final Environment environment;
 

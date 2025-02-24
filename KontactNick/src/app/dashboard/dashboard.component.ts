@@ -90,6 +90,11 @@ export class DashboardComponent implements OnInit {
     this.authService.getUserProfile().subscribe(
       (profile) => {
         if (profile) {
+          // ✅ Убираем префикс "ROLE_"
+          if (profile.role && profile.role.startsWith("ROLE_")) {
+            profile.role = profile.role.substring(5).toLowerCase();
+          }
+
           this.userProfile = profile;
 
           // ✅ Логируем профиль
