@@ -9,11 +9,6 @@ import org.springframework.context.annotation.ComponentScan;
 
 @Slf4j
 @SpringBootApplication
-@ComponentScan(basePackages = {
-		"kontactNick.security",
-		"kontactNick.config",
-		"kontactNick.service"
-})
 public class KontactNickApplication {
 
 	@Value("${GOOGLE_CLIENT_ID:NOT_SET}")

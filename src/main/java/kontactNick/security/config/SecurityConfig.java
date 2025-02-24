@@ -82,7 +82,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/fields/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/categories/**/fields/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/contact-log/add").authenticated()
-                        .requestMatchers("/api/auth/check").authenticated()
                         .requestMatchers(
                                 "/oauth2/**",
                                 "/login/oauth2/**",

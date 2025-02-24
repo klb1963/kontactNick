@@ -7,7 +7,6 @@ import jakarta.validation.Valid;
 import kontactNick.dto.LoginDto;
 import kontactNick.dto.UserDto;
 import kontactNick.security.util.JwtTokenProvider;
-import kontactNick.service.TokenService;
 import kontactNick.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
