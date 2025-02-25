@@ -12,6 +12,7 @@ import {AuthService} from '../services/auth.service';
 import {FormsModule} from '@angular/forms';
 import {MatListModule} from '@angular/material/list'; // ✅ Исправленный импорт
 import {MatButtonModule} from '@angular/material/button';
+import {AddContactDialogComponent} from '@app/add-contact/add-contact.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -175,6 +176,31 @@ export class DashboardComponent implements OnInit {
           );
         });
 
+      }
+    });
+  }
+
+  openAddContactDialog(category: any) {
+    console.log("📢 Opening Add Contact Dialog with category:", category);
+
+    if (!category.fields || category.fields.length === 0) {
+      console.warn("⚠️ No fields found for category:", category.name);
+      return;
+    }
+
+    const dialogRef = this.dialog.open(AddContactDialogComponent, {
+      width: '400px',
+      data: { category: { ...category } } // ✅ Передаём весь объект категории
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        console.log("✅ Contact data received:", result);
+        // Отправляем контакт в выбранную категорию
+        this.categoryService.addContactToCategory(category.id, result).subscribe(
+          () => console.log("✅ Contact successfully saved in category"),
+          (error) => console.error("❌ Error saving contact:", error)
+        );
       }
     });
   }

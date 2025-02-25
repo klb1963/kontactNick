@@ -153,4 +153,13 @@ export class CategoryService {
       })
     );
   }
+
+  /** ✅ Добавление контакта и категории в Google Contacts */
+  addContactToCategory(categoryId: number, contact: any) {
+    return this.http.post(`/api/google-contacts/add`, {
+      categoryId,
+      contact
+    });
+  }
+
 }

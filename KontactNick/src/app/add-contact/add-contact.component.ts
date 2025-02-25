@@ -2,7 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { CategoryService } from '../services/category.service';
 import { AuthService } from '../services/auth.service';
-import { GoogleContactsService } from '@app/services/google-contacts.service';
+import { GoogleContactsService } from '../services/google-contacts.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -25,22 +25,32 @@ import { MatDialogModule } from '@angular/material/dialog';
   ]
 })
 export class AddContactDialogComponent implements OnInit {
-  categoryId: number;
+  categoryId: number = 0;
+  categoryName: string = '';
   fields: any[] = [];
-  contactData: any = { name: '', nick: '', email: '', phone: '', category: '', otherFields: {} };
+  contactData: any = { name: '', nick: '', email: '', phone: '', otherFields: {} };
   currentUserNick: string = '';
 
   constructor(
-    private dialogRef: MatDialogRef<AddContactDialogComponent>,
+    public dialogRef: MatDialogRef<AddContactDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private categoryService: CategoryService,
     private authService: AuthService,
     private googleContactsService: GoogleContactsService
   ) {
-    this.categoryId = data.categoryId;
+    console.log("📥 Received data in constructor:", data); // ✅ Проверяем, что пришло в `data`
+
+    if (typeof data?.category === 'object') { // ✅ Проверяем, что `category` — это объект
+      this.categoryId = data.category.id ?? 0;
+      this.categoryName = data.category.name ?? 'Unknown';
+    } else {
+      console.error("❌ Ошибка: `category` передан как строка, а не объект!", data.category);
+    }
   }
 
   ngOnInit(): void {
+    console.log("🛠️ Dialog opened with category:", this.categoryName, "ID:", this.categoryId);
+
     // ✅ Получаем ник текущего пользователя
     this.authService.getUserProfile().subscribe(profile => {
       if (profile?.nick) {
@@ -53,6 +63,13 @@ export class AddContactDialogComponent implements OnInit {
   }
 
   loadFields(): void {
+    if (!this.categoryId) {
+      console.error("❌ Ошибка: categoryId не передан!");
+      return;
+    }
+
+    console.log("📡 Fetching fields for categoryId:", this.categoryId);
+
     this.categoryService.getCategoryFields(this.categoryId).subscribe({
       next: (fields) => {
         this.fields = fields;
@@ -82,19 +99,20 @@ export class AddContactDialogComponent implements OnInit {
       googleContact.phoneNumbers = [{ value: this.contactData.phone }];
     }
 
-    // ✅ Все остальные поля сохраняем списком
-    const additionalFields = Object.keys(this.contactData)
-      .filter(key => !['name', 'nick', 'email', 'phone'].includes(key))
-      .map(key => ({ field: key, value: this.contactData[key] }));
+    // ✅ Все остальные поля сохраняем в `otherFields`
+    this.fields.forEach(field => {
+      if (this.contactData.otherFields[field.name]) {
+        googleContact[field.name] = this.contactData.otherFields[field.name];
+      }
+    });
 
     console.log("📤 Saving to Google Contacts:", googleContact);
-    console.log("📥 Additional fields:", additionalFields);
 
-    this.saveContactToGoogle(googleContact, additionalFields);
+    this.saveContactToGoogle(googleContact);
   }
 
-  saveContactToGoogle(contact: any, additionalFields: any[]): void {
-    this.authService.getGoogleAccessToken().subscribe((accessToken) => {  // ✅ Ждём, пока токен будет получен
+  saveContactToGoogle(contact: any): void {
+    this.authService.getGoogleAccessToken().subscribe((accessToken) => {
       if (!accessToken) {
         console.error("❌ No Google access token found!");
         alert("⚠️ You need to log in with Google first!");
@@ -105,7 +123,7 @@ export class AddContactDialogComponent implements OnInit {
         next: (response) => {
           console.log("✅ Contact successfully added to Google Contacts!", response);
           alert("✅ Контакт успешно добавлен в Google!");
-          this.dialogRef.close(this.contactData); // ✅ Закрываем только после успеха!
+          this.dialogRef.close(this.contactData);
         },
         error: (err) => {
           console.error("❌ Error adding contact to Google:", err);
