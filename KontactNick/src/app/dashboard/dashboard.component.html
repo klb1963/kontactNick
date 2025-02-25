@@ -76,7 +76,16 @@
       </thead>
       <tbody>
       <tr *ngFor="let category of sortedCategories">
-        <td>{{ category.name }}</td>
+<!--        <td>{{ category.name }}</td>-->
+        <td>
+          <strong>{{ category.name }}</strong>:
+            <span *ngIf="category.fields?.length; else noFields">
+              [<ng-container *ngFor="let field of category.fields; let last = last">
+              {{ field.name }}<span *ngIf="!last">, </span>
+              </ng-container>]
+            </span>
+          <ng-template #noFields> No fields </ng-template>
+        </td>
         <td>{{ category.description || 'No description' }}</td>
         <td>
           <button class="field-action-btn" (click)="viewCategoryFields(category.id)">👀 View</button>

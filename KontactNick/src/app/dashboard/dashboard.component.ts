@@ -61,12 +61,16 @@ export class DashboardComponent implements OnInit {
   loadCategories() {
     this.categoryService.getUserCategories().subscribe({
       next: (categories: any[]) => {
-        this.categories = categories || []; // ✅ Предотвращение undefined
-        this.sortCategories(); // ✅ Сортируем после загрузки
+        this.categories = categories.map(category => ({
+          ...category,
+          fields: category.fields || [] // ✅ Убеждаемся, что всегда массив
+        }));
+        this.sortCategories();
+        console.log("✅ Categories loaded:", this.categories);
       },
       error: (error) => {
         console.error("❌ Error fetching categories:", error);
-        this.categories = []; // ✅ Установка пустого массива при ошибке
+        this.categories = [];
       }
     });
   }
