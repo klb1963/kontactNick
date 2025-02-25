@@ -2,19 +2,20 @@
 
 <mat-dialog-content>
   <form #contactForm="ngForm">
-    <mat-form-field appearance="outline" style="width: 100%;">
-      <mat-label>Name</mat-label>
-      <input matInput [(ngModel)]="contactData.name" name="name" required />
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" style="width: 100%;">
-      <mat-label>Email</mat-label>
-      <input matInput [(ngModel)]="contactData.email" name="email" type="email" required />
-    </mat-form-field>
 
     <mat-form-field appearance="outline" style="width: 100%;">
       <mat-label>Nick (User to add)</mat-label>
       <input matInput [(ngModel)]="contactData.nick" name="nick" required />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Email</mat-label>
+      <input matInput [(ngModel)]="contactData.email" name="email" type="email" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Name</mat-label>
+      <input matInput [(ngModel)]="contactData.name" name="name"/>
     </mat-form-field>
 
     <!-- Скрытое поле с ником текущего пользователя -->

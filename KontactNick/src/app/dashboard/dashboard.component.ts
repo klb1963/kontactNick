@@ -1,17 +1,17 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { CategoryDialogComponent } from '../category-dialog/category-dialog.component';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { Router } from '@angular/router';
-import { CategoryService } from '../services/category.service';
-import { AuthService } from '../services/auth.service';
-import { FormsModule } from '@angular/forms';
-import { MatListModule } from '@angular/material/list'; // ✅ Исправленный импорт
-import { MatButtonModule } from '@angular/material/button';
+import {Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
+import {CommonModule} from '@angular/common';
+import {MatCardModule} from '@angular/material/card';
+import {MatIconModule} from '@angular/material/icon';
+import {MatTableModule} from '@angular/material/table';
+import {MatDialog, MatDialogModule} from '@angular/material/dialog';
+import {CategoryDialogComponent} from '../category-dialog/category-dialog.component';
+import {MatExpansionModule} from '@angular/material/expansion';
+import {Router} from '@angular/router';
+import {CategoryService} from '../services/category.service';
+import {AuthService} from '../services/auth.service';
+import {FormsModule} from '@angular/forms';
+import {MatListModule} from '@angular/material/list'; // ✅ Исправленный импорт
+import {MatButtonModule} from '@angular/material/button';
 
 @Component({
   selector: 'app-dashboard',
@@ -125,7 +125,6 @@ export class DashboardComponent implements OnInit {
       this.nickError = 'Nick cannot be empty.';
       return;
     }
-
     this.authService.updateNick(this.editableNick).subscribe({
       next: (response: any) => {
         this.userProfile.nick = this.editableNick;
