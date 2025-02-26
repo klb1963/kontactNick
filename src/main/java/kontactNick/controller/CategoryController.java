@@ -11,7 +11,7 @@ import kontactNick.repository.FieldRepository;
 import kontactNick.repository.UserRepository;
 import kontactNick.service.CategoryService;
 import kontactNick.service.FieldService;
-import kontactNick.service.UserService;
+import kontactNick.service.OAuth2AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -39,6 +40,47 @@ public class CategoryController {
     private final FieldRepository fieldRepository;
     private final FieldService fieldService;
     private final CategoryService categoryService;
+
+    @PostMapping("/google/contact-groups")
+    public ResponseEntity<?> createGoogleCategory(@RequestBody Map<String, Object> requestBody) {
+        log.info("📡 Received request to create Google category: {}", requestBody);
+
+        // ✅ Извлекаем объект contactGroup
+        Map<String, String> contactGroup = (Map<String, String>) requestBody.get("contactGroup");
+        if (contactGroup == null || !contactGroup.containsKey("name")) {
+            log.error("❌ Missing 'contactGroup.name' field in request: {}", requestBody);
+            return ResponseEntity.badRequest().body("Missing 'contactGroup.name' field");
+        }
+
+        String categoryName = contactGroup.get("name");
+        log.info("📂 Creating Google Contact Group: {}", categoryName);
+
+        // ✅ Получаем текущего пользователя из SecurityContext
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.debug("🔑 Authenticated user: {}", email);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> {
+                    log.warn("❌ User {} not found!", email);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+                });
+
+        // ✅ Получаем токен из базы данных
+        String accessToken = user.getGoogleAccessToken();
+        if (accessToken == null || accessToken.isEmpty()) {
+            log.error("❌ Ошибка: У пользователя {} нет Google Access Token", email);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Google OAuth2 token is missing");
+        }
+
+        // ✅ Отправляем запрос в Google API
+        try {
+            String googleGroupId = categoryService.createGoogleContactGroup(categoryName, accessToken);
+            return ResponseEntity.ok(Map.of("googleGroupId", googleGroupId));
+        } catch (Exception e) {
+            log.error("❌ Failed to create Google category: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error creating Google category");
+        }
+    }
 
     // ✅ Создание категории
     @PostMapping("/categories")

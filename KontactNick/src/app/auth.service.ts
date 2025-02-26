@@ -10,6 +10,7 @@ import { map, tap, switchMap } from 'rxjs/operators';
 })
 export class AuthService {
   private baseUrl = 'http://localhost:8080/api/auth';
+  private googleBaseUrl = 'http://localhost:8080/api/google';
 
   constructor(
     private http: HttpClient,
@@ -22,31 +23,54 @@ export class AuthService {
     return isPlatformBrowser(this.platformId);
   }
 
-  /** ✅ Получение токена с сервера (если HttpOnly) */
+  /** ✅ Получение **JWT-токена** с сервера */
   public getTokenFromServer(): Observable<string | null> {
-    console.log('📡 Sending GET request to /api/auth/token...');
+    console.log('📡 Fetching JWT token...');
     return this.http.get<{ token?: string }>(`${this.baseUrl}/token`, {
       withCredentials: true
     }).pipe(
-      tap(response => console.log("🔑 Raw response from server:", response)),
+      tap(response => console.log("🔑 JWT Token Response:", response)),
       map(response => response?.token ?? null),
-      tap(token => console.log("🔑 Extracted Token:", token)),
       catchError(error => {
-        console.error("🚨 Error fetching token from server:", error);
+        console.error("🚨 Error fetching JWT token:", error);
         return of(null);
       })
     );
   }
 
-  /** ✅ Проверка статуса аутентификации */
+  /** ✅ Получение **Google Access Token** с сервера */
+  public getGoogleAccessToken(): Observable<string | null> {
+    console.log('📡 Fetching Google Access Token...');
+    return this.http.get<{ accessToken?: string }>(`${this.googleBaseUrl}/token`, {
+      withCredentials: true
+    }).pipe(
+      tap(response => console.log("🔑 Google Token Response:", response)),
+      map(response => response?.accessToken ?? null),
+      tap(token => {
+        if (token) {
+          localStorage.setItem('googleAccessToken', token);  // ✅ Сохраняем в локальное хранилище
+          console.log("✅ Google Access Token saved to localStorage.");
+        }
+      }),
+      catchError(error => {
+        console.error("🚨 Error fetching Google Access Token:", error);
+        return of(null);
+      })
+    );
+  }
+
+  /** ✅ Проверка статуса аутентификации (JWT) */
   public checkAuthStatus(): Observable<boolean> {
-    console.log('📡 Sending auth check request...');
-    return this.http.get<{ authenticated?: boolean }>(
-      `${this.baseUrl}/check`,
-      { withCredentials: true }
-    ).pipe(
+    console.log('📡 Checking auth status...');
+    return this.http.get<{ authenticated: boolean }>(`${this.baseUrl}/check`, {
+      withCredentials: true
+    }).pipe(
       tap(response => console.log('🔍 Auth check response:', response)),
-      map((response: any) => response?.authenticated === 'true'),
+      map((response: { authenticated: boolean }) => {
+        const isAuthenticated = !!response.authenticated; // ✅ Приводим к boolean
+        console.log("🔑 User is authenticated:", isAuthenticated);
+        return isAuthenticated;
+      }),
       catchError(error => {
         console.error('🚨 Auth check failed:', error);
         return of(false);
@@ -101,6 +125,7 @@ export class AuthService {
         .subscribe({
           next: () => {
             console.log('✅ Logged out successfully');
+            localStorage.removeItem('googleAccessToken');  // ❌ Удаляем токен при логауте
             this.router.navigate(['/login']).then(() => window.location.reload());
           },
           error: (err) => console.error('🚨 Logout error:', err)
@@ -108,22 +133,23 @@ export class AuthService {
     }
   }
 
-  /** ✅ Получение категорий пользователя (с проверкой токена) */
+  /** ✅ Получение категорий пользователя */
   public getUserCategories(): Observable<any[]> {
-    return this.getTokenFromServer().pipe(
-      switchMap(token => {
-        if (!token) {
-          console.warn('❌ No JWT found, skipping category request');
-          return of([]);
-        }
-        return this.http.get<any[]>(`${this.baseUrl}/categories/my`, { withCredentials: true }).pipe(
-          tap(categories => console.log('📂 Categories received:', categories)),
-          catchError(error => {
-            console.error('🚨 Error fetching categories:', error);
-            return of([]);
-          })
-        );
+    return this.http.get<any[]>(`${this.baseUrl}/categories/my`, { withCredentials: true }).pipe(
+      tap(categories => console.log('📂 Categories received:', categories)),
+      catchError(error => {
+        console.error('🚨 Error fetching categories:', error);
+        return of([]);
       })
     );
   }
+
+  /** ✅ Получение **Google Access Token** из `localStorage`, если мы в браузере */
+  public getAccessToken(): string | null {
+    if (typeof window !== 'undefined') { // Проверка, что код выполняется в браузере
+      return localStorage.getItem('googleAccessToken');
+    }
+    return null;
+  }
+
 }
