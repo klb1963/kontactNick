@@ -134,12 +134,22 @@ public class OAuth2AuthenticationService {
             int expiresIn = (Integer) responseBody.getOrDefault("expires_in", 3600);
 
             // 🔹 Обновляем пользователя
+            Instant expiryTime = Instant.now().plusSeconds(expiresIn);
+            log.info("✅ Новый Access Token: {}", newAccessToken);
+            log.info("⏳ Новый срок действия (expires_in): {} секунд", expiresIn);
+            log.info("⏳ Новый Google Access Token истекает в: {}", expiryTime);
+
             user.setGoogleAccessToken(newAccessToken);
-            user.setGoogleTokenExpiry(Instant.now().plusSeconds(expiresIn));
+            user.setGoogleTokenExpiry(Instant.now().plusSeconds(expiresIn)); // Всегда в UTC
+            // user.setGoogleExpiresIn(expiresIn); // Для проверки
             userRepository.save(user);
 
-            log.info("✅ Access token обновлён для {}", user.getEmail());
+            // 🔄 Проверяем сохранение в БД
+            User updatedUser = userRepository.findByEmail(user.getEmail()).orElseThrow();
+            log.info("🔄 Проверяем сохранённое время истечения в БД: {}", updatedUser.getGoogleTokenExpiry());
+
             return newAccessToken;
+
         } catch (Exception e) {
             log.error("❌ Исключение при обновлении access_token: {}", e.getMessage());
             throw new IllegalStateException("Ошибка при обновлении access_token", e);

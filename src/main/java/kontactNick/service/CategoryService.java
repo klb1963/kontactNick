@@ -20,7 +20,7 @@ import java.util.Map;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final RestTemplate restTemplate;
+    private final GoogleContactsService googleContactsService;
     private final OAuth2AuthenticationService oAuth2AuthenticationService;
 
     // 📖 Получение категорий пользователя
@@ -28,6 +28,7 @@ public class CategoryService {
         return categoryRepository.findByUser_Email(email);
     }
 
+    // 📂 Создание категории (с синхронизацией с Google Contacts)
     @Transactional
     public Category createCategoryWithGoogleSync(Category category, User user) {
         log.info("📂 Создаём категорию '{}' для пользователя {}", category.getName(), user.getEmail());
@@ -35,120 +36,44 @@ public class CategoryService {
         // ✅ Сохраняем категорию в БД
         Category savedCategory = categoryRepository.save(category);
 
-        // 🔄 Создаём группу в Google Contacts
+        // 🔄 Проверяем, есть ли такая группа в Google Contacts
         try {
             String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
-            String googleResourceName = createGoogleContactGroup(category.getName(), accessToken);
+            String googleResourceName = googleContactsService.createOrGetGoogleContactGroup(category.getName(), accessToken);
 
             if (googleResourceName != null) {
                 savedCategory.setGoogleResourceName(googleResourceName);
-                log.info("✅ Группа создана в Google Contacts: {}", googleResourceName);
+                log.info("✅ Группа '{}' успешно привязана к категории", category.getName());
             } else {
-                log.warn("⚠️ Группа не была создана в Google Contacts. Продолжаем без неё.");
+                log.warn("⚠️ Группа не найдена или не создана. Продолжаем без неё.");
             }
 
         } catch (Exception e) {
-            log.error("❌ Ошибка при создании группы в Google Contacts", e);
+            log.error("❌ Ошибка при работе с Google Contacts", e);
         }
 
         return savedCategory;
     }
 
-    @Transactional
-    public Category updateCategory(Long categoryId, String newName, User user) {
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-
-        if (category.getGoogleResourceName() != null) {
-            try {
-                String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
-                updateGoogleContactGroup(category.getGoogleResourceName(), newName, accessToken);
-                log.info("✅ Группа в Google Contacts обновлена: {}", newName);
-            } catch (Exception e) {
-                log.error("❌ Ошибка при обновлении группы в Google Contacts", e);
-            }
-        }
-
-        category.setName(newName);
-        return categoryRepository.save(category);
-    }
-
-    /**
-     * 🔄 Создание группы в Google Contacts
-     */
-    public String createGoogleContactGroup(String categoryName, String accessToken) {
-        log.info("🔄 Создаём группу '{}' в Google Contacts...", categoryName);
-
-        if (accessToken == null || accessToken.isEmpty()) {
-            log.error("❌ Ошибка: Access Token отсутствует!");
-            return null;
-        }
-
-        String url = "https://people.googleapis.com/v1/contactGroups";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        // ✅ Исправленный JSON
-        Map<String, Object> requestBody = Map.of("contactGroup", Map.of("name", categoryName));
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String resourceName = (String) response.getBody().get("resourceName");
-                log.info("✅ Группа создана в Google Contacts: {}", resourceName);
-                return resourceName;
-            } else {
-                log.error("❌ Ошибка создания группы в Google Contacts: {}", response.getBody());
-            }
-        } catch (HttpClientErrorException e) {
-            log.error("❌ Ошибка при создании группы ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("❌ API Google Contacts временно недоступен", e);
-        }
-        return null;
-    }
-
-    /**
-     * 🔄 Обновление группы в Google Contacts
-     */
-    private void updateGoogleContactGroup(String resourceName, String newName, String accessToken) {
-        log.info("🔄 Обновляем группу '{}' в Google Contacts...", newName);
-
-        if (resourceName == null || !resourceName.startsWith("contactGroups/")) {
-            log.error("❌ Ошибка: некорректный resourceName для Google Contacts: {}", resourceName);
-            return;
-        }
-
-        if (accessToken == null || accessToken.isEmpty()) {
-            log.error("❌ Ошибка: Access Token отсутствует!");
-            return;
-        }
-
-        String url = "https://people.googleapis.com/v1/" + resourceName;
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        // ✅ Исправленный JSON
-        Map<String, Object> requestBody = Map.of("contactGroup", Map.of("name", newName));
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-
-        try {
-            ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.PATCH, requestEntity, Void.class);
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("✅ Группа '{}' обновлена в Google Contacts", newName);
-            } else {
-                log.error("❌ Ошибка обновления группы в Google Contacts: {}", response.getBody());
-            }
-        } catch (HttpClientErrorException e) {
-            log.error("❌ Ошибка при обновлении группы ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("❌ API Google Contacts временно недоступен", e);
-        }
-    }
+//    // 🔄 Обновление категории (и группы в Google Contacts)
+//    @Transactional
+//    public Category updateCategory(Long categoryId, String newName, User user) {
+//        Category category = categoryRepository.findById(categoryId)
+//                .orElseThrow(() -> new RuntimeException("Category not found"));
+//
+//        // 🔄 Если категория уже связана с Google, обновляем её
+//        if (category.getGoogleResourceName() != null) {
+//            try {
+//                String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
+//                googleContactsService.updateGoogleContactGroup(category.getGoogleResourceName(), newName, accessToken);
+//                log.info("✅ Группа '{}' в Google Contacts обновлена", newName);
+//            } catch (Exception e) {
+//                log.error("❌ Ошибка при обновлении группы в Google Contacts", e);
+//            }
+//        }
+//
+//        category.setName(newName);
+//        return categoryRepository.save(category);
+//    }
 
 }

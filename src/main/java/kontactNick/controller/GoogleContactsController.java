@@ -39,10 +39,12 @@ public class GoogleContactsController {
     @GetMapping("/contacts")
     public ResponseEntity<?> getGoogleContacts(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         String accessToken = extractAccessToken(authHeader);
+
         if (accessToken == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authorization header missing"));
         }
-        return googleContactsService.getContacts(accessToken);
+
+        return ResponseEntity.ok(googleContactsService.fetchGoogleContacts(accessToken));
     }
 
     // ✅ Создание категории в Google Contacts
@@ -50,6 +52,7 @@ public class GoogleContactsController {
     public ResponseEntity<?> createGoogleCategory(@RequestHeader(value = "Authorization", required = false) String authHeader,
                                                   @RequestBody Map<String, String> request) {
         String accessToken = extractAccessToken(authHeader);
+
         if (accessToken == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authorization header missing"));
         }
@@ -59,7 +62,7 @@ public class GoogleContactsController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Category name is required"));
         }
 
-        return googleContactsService.createCategory(categoryName, accessToken);
+        return googleContactsService.createGoogleContactGroup(categoryName, accessToken);
     }
 
     // ✅ Добавление контакта в категорию Google Contacts
@@ -78,7 +81,7 @@ public class GoogleContactsController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Both categoryId and contactId are required"));
         }
 
-        return googleContactsService.addToCategory(categoryId, contactId, accessToken);
+        return googleContactsService.addContactToGoogleCategory(categoryId, contactId, accessToken);
     }
 
     // ✅ Улучшенная обработка заголовка Authorization

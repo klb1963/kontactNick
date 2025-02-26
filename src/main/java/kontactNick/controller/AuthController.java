@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import kontactNick.dto.LoginDto;
 import kontactNick.dto.UserDto;
+import kontactNick.entity.User;
+import kontactNick.repository.UserRepository;
 import kontactNick.security.util.JwtTokenProvider;
 import kontactNick.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -37,6 +41,7 @@ public class AuthController {
 
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserDto userDto) {
@@ -110,17 +115,19 @@ public class AuthController {
      */
     @GetMapping("/google-token")
     public ResponseEntity<?> getGoogleToken(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("google-access-token".equals(cookie.getName())) {
-                    return ResponseEntity.ok(Map.of("token", cookie.getValue()));
-                }
-            }
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Google token not found"));
-    }
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("🔍 Запрос Google Access Token для: {}", email);
 
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty() || userOpt.get().getGoogleAccessToken() == null) {
+            log.warn("❌ Google Access Token не найден для {}", email);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Google token not found"));
+        }
+
+        String accessToken = userOpt.get().getGoogleAccessToken();
+        log.info("✅ Возвращаем Google Access Token для {}: {}", email, accessToken);
+        return ResponseEntity.ok(Map.of("google_access_token", accessToken));
+    }
 
     /**
      * ✅ Выход из системы (Logout)

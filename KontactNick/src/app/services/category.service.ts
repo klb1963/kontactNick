@@ -2,7 +2,7 @@ import { HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import {catchError, switchMap, tap} from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -114,15 +114,36 @@ export class CategoryService {
 
   /** ✅ Создание категории (группы) в Google Contacts */
   createGoogleCategory(category: { name: string }): Observable<any> {
-    const accessToken = this.authService.getAccessToken();  // ✅ Получаем токен
+    let accessToken = localStorage.getItem('googleAccessToken');  // ✅ Пробуем взять из локального хранилища
 
     if (!accessToken) {
-      console.error("❌ Ошибка: отсутствует Google Access Token!");
-      return new Observable(observer => {
-        observer.error("No Access Token");
-        observer.complete();
-      });
+      console.warn("⚠️ Access Token отсутствует в localStorage, запрашиваем у сервера...");
+      return this.authService.getGoogleAccessToken().pipe(
+        switchMap(token => {
+          if (!token) {
+            console.error("❌ Ошибка: не удалось получить Google Access Token!");
+            return of(null);
+          }
+
+          console.log("✅ Получен Google Access Token, продолжаем запрос...");
+
+          const headers = new HttpHeaders({
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          });
+
+          return this.http.post(`${this.baseUrl}/google/categories`, category, { headers }).pipe(
+            tap(() => console.log("✅ Google category created")),
+            catchError(error => {
+              console.error("❌ Ошибка при создании Google категории:", error);
+              return of(null);
+            })
+          );
+        })
+      );
     }
+
+    console.log("✅ Используем токен из localStorage");
 
     const headers = new HttpHeaders({
       "Authorization": `Bearer ${accessToken}`,

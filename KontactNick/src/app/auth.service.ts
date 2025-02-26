@@ -38,27 +38,6 @@ export class AuthService {
     );
   }
 
-  /** ✅ Получение **Google Access Token** с сервера */
-  public getGoogleAccessToken(): Observable<string | null> {
-    console.log('📡 Fetching Google Access Token...');
-    return this.http.get<{ accessToken?: string }>(`${this.googleBaseUrl}/token`, {
-      withCredentials: true
-    }).pipe(
-      tap(response => console.log("🔑 Google Token Response:", response)),
-      map(response => response?.accessToken ?? null),
-      tap(token => {
-        if (token) {
-          localStorage.setItem('googleAccessToken', token);  // ✅ Сохраняем в локальное хранилище
-          console.log("✅ Google Access Token saved to localStorage.");
-        }
-      }),
-      catchError(error => {
-        console.error("🚨 Error fetching Google Access Token:", error);
-        return of(null);
-      })
-    );
-  }
-
   /** ✅ Проверка статуса аутентификации (JWT) */
   public checkAuthStatus(): Observable<boolean> {
     console.log('📡 Checking auth status...');
@@ -150,6 +129,27 @@ export class AuthService {
       return localStorage.getItem('googleAccessToken');
     }
     return null;
+  }
+
+  /** ✅ Получение **Google Access Token** с сервера */
+  public getGoogleAccessToken(): Observable<string | null> {
+    console.log('📡 Fetching Google Access Token...');
+    return this.http.get<{ accessToken?: string }>(`${this.googleBaseUrl}/token`, {
+      withCredentials: true
+    }).pipe(
+      tap(response => console.log("🔑 Google Token Response:", response)),
+      map(response => response?.accessToken ?? null),
+      tap(token => {
+        if (token) {
+          localStorage.setItem('googleAccessToken', token);  // ✅ Сохраняем в локальное хранилище
+          console.log("✅ Google Access Token saved to localStorage.");
+        }
+      }),
+      catchError(error => {
+        console.error("🚨 Error fetching Google Access Token:", error);
+        return of(null);
+      })
+    );
   }
 
 }

@@ -1,6 +1,7 @@
 package kontactNick.security.config;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
@@ -22,6 +23,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
+//🔥 Что улучшено?
+//
+// ✅ Логируется отсутствие cookies
+//✅ Добавлен catch для ExpiredJwtException (чтобы отличать истекший токен)
+//✅ Разделены ошибки валидации и парсинга токена
+//✅ Логируется существующая аутентификация в SecurityContextHolder
+//✅ Чёткие и понятные логи на каждом этапе
+
+
 @Slf4j
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -41,18 +51,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws IOException, ServletException {
 
+        log.info("🔍 Incoming Authorization header: {}", request.getHeader("Authorization"));
+        log.info("🔍 [JwtAuthenticationFilter] Checking authentication...");
         log.info("🔍 JwtAuthenticationFilter: Incoming request -> {} {}", request.getMethod(), request.getRequestURI());
 
         String token = null;
-        if (request.getCookies() != null) {
+
+        if (request.getCookies() == null) {
+            log.warn("🍪 JwtAuthenticationFilter: No cookies found in request.");
+        } else {
             log.debug("🍪 JwtAuthenticationFilter: Checking cookies for JWT token...");
             token = tokenService.extractTokenFromCookies(request);
 
-            if (token != null && jwtTokenProvider.validateToken(token)) { // ✅ Проверяем валидность токена
-                log.info("✅ JwtAuthenticationFilter: Valid token found in cookies.");
-            } else {
-                log.warn("❌ JwtAuthenticationFilter: Invalid or missing token in cookies.");
-                token = null; // Очищаем переменную, если токен невалидный
+            if (token != null) {
+                try {
+                    if (jwtTokenProvider.validateToken(token)) {
+                        log.info("✅ JwtAuthenticationFilter: Valid token found in cookies.");
+                    } else {
+                        log.warn("❌ JwtAuthenticationFilter: Token validation failed.");
+                        token = null;
+                    }
+                } catch (Exception e) {
+                    log.error("❌ JwtAuthenticationFilter: Token validation error: {}", e.getMessage());
+                    token = null;
+                }
             }
         }
 
@@ -83,9 +105,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                log.debug("🔐 JwtAuthenticationFilter: Setting authentication in SecurityContextHolder...");
+                log.debug("🔐 JwtAuthenticationFilter: No existing authentication found, setting new authentication...");
 
-                // Создаем UserDetails
                 UserDetails userDetails = new org.springframework.security.core.userdetails.User(
                         email, "", Collections.singletonList(new SimpleGrantedAuthority(role))
                 );
@@ -97,14 +118,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 log.info("✅ JwtAuthenticationFilter: SecurityContextHolder updated for user: {}", email);
             } else {
-                log.debug("🔄 JwtAuthenticationFilter: SecurityContextHolder already contains authentication: {}",
+                log.debug("🔄 JwtAuthenticationFilter: Authentication already exists in SecurityContextHolder -> {}",
                         SecurityContextHolder.getContext().getAuthentication().getName());
             }
 
-        } catch (Exception e) {
-            log.error("❌ JwtAuthenticationFilter: Token validation failed: {}", e.getMessage());
+        } catch (ExpiredJwtException e) {
+            log.error("❌ JwtAuthenticationFilter: Token has expired: {}", e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Invalid or expired token");
+            response.getWriter().write("Token expired");
+            return;
+        } catch (Exception e) {
+            log.error("❌ JwtAuthenticationFilter: Token parsing error: {}", e.getMessage());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Invalid token");
             return;
         }
 

@@ -11,6 +11,7 @@ import kontactNick.repository.FieldRepository;
 import kontactNick.repository.UserRepository;
 import kontactNick.service.CategoryService;
 import kontactNick.service.FieldService;
+import kontactNick.service.GoogleContactsService;
 import kontactNick.service.OAuth2AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,7 @@ public class CategoryController {
     private final FieldRepository fieldRepository;
     private final FieldService fieldService;
     private final CategoryService categoryService;
+    private final GoogleContactsService googleContactsService;
 
     @PostMapping("/google/contact-groups")
     public ResponseEntity<?> createGoogleCategory(@RequestBody Map<String, Object> requestBody) {
@@ -74,7 +76,7 @@ public class CategoryController {
 
         // ✅ Отправляем запрос в Google API
         try {
-            String googleGroupId = categoryService.createGoogleContactGroup(categoryName, accessToken);
+            String googleGroupId = googleContactsService.createOrGetGoogleContactGroup(categoryName, accessToken);
             return ResponseEntity.ok(Map.of("googleGroupId", googleGroupId));
         } catch (Exception e) {
             log.error("❌ Failed to create Google category: {}", e.getMessage(), e);
@@ -151,9 +153,9 @@ public class CategoryController {
                 .body(savedField); // Возвращаем сохранённое поле
     }
 
-    // ✅ Обновление категории (с проверкой владельца)
+    // ✅ Обновление категории (синхронизация с Google Contacts API) - new version
     @PutMapping("/categories/{categoryId}")
-    public ResponseEntity<Category> updateCategory(@PathVariable Long categoryId, @RequestBody CategoryDto categoryDto) {
+    public ResponseEntity<Category> updateCategory(@PathVariable Long categoryId, @Valid @RequestBody CategoryDto categoryDto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         Category category = categoryRepository.findById(categoryId)
@@ -163,15 +165,40 @@ public class CategoryController {
                     return new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found or access denied");
                 });
 
+        if (categoryDto.getName() == null || categoryDto.getName().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name cannot be empty");
+        }
+
+        boolean nameChanged = !category.getName().equals(categoryDto.getName());
         category.setName(categoryDto.getName());
         category.setDescription(categoryDto.getDescription());
-        categoryRepository.save(category);
 
+        categoryRepository.save(category);
         log.info("✅ Updated category '{}' for user '{}'", category.getName(), email);
+
+        // 🔄 Если название изменилось, обновляем в Google Contacts
+        if (nameChanged && category.getGoogleResourceName() != null) {
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+            String accessToken = user.getGoogleAccessToken();
+
+            if (accessToken == null || accessToken.isEmpty()) {
+                log.warn("❌ User '{}' has no Google access token, skipping Google Contacts update", email);
+            } else {
+                try {
+                    googleContactsService.updateGoogleContactGroup(category.getGoogleResourceName(), categoryDto.getName(), accessToken);
+                    log.info("✅ Google Contact Group updated: {}", category.getGoogleResourceName());
+                } catch (Exception e) {
+                    log.error("❌ Failed to update Google Contact Group '{}': {}", category.getGoogleResourceName(), e.getMessage());
+                }
+            }
+        }
+
         return ResponseEntity.ok(category);
     }
 
-    // ✅ Удаление категории (с проверкой владельца)
+
+    // ✅ Удаление категории (с удалением группы в Google Contacts)
     @DeleteMapping("/categories/{categoryId}")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -182,6 +209,24 @@ public class CategoryController {
                     log.warn("❌ Attempt to delete category {} failed, user {} has no access!", categoryId, email);
                     return new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found or access denied");
                 });
+
+        // 📡 Удаление группы в Google Contacts API, если есть googleResourceName
+        if (category.getGoogleResourceName() != null) {
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+            String accessToken = user.getGoogleAccessToken();
+
+            if (accessToken != null && !accessToken.isEmpty()) {
+                try {
+                    googleContactsService.deleteGoogleContactGroup(category.getGoogleResourceName(), accessToken);
+                    log.info("🗑 Deleted Google Contact Group: {}", category.getGoogleResourceName());
+                } catch (Exception e) {
+                    log.error("❌ Failed to delete Google Contact Group: {}", e.getMessage(), e);
+                }
+            } else {
+                log.warn("⚠ No Google Access Token found for user {}", email);
+            }
+        }
 
         categoryRepository.delete(category);
         log.info("🗑 Deleted category '{}' for user '{}'", category.getName(), email);
