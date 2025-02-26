@@ -1,4 +1,5 @@
 import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { RouterLink } from '@angular/router';
@@ -30,6 +31,7 @@ export class LoginComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
+    private http: HttpClient,
     private router: Router,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {}
@@ -50,9 +52,28 @@ export class LoginComponent implements OnInit {
     }
   }
 
+  // логин через Google
   loginWithGoogle(): void {
     console.log('🔵 Redirecting to Google login...');
     window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+  }
+
+  /** После редиректа получаем токен с бэкенда */
+  fetchGoogleAccessToken(): void {
+    this.http.get<{ accessToken: string }>('http://localhost:8080/api/google/token', { withCredentials: true })
+      .subscribe({
+        next: (response) => {
+          if (response.accessToken) {
+            console.log('✅ Google Access Token получен:', response.accessToken);
+            localStorage.setItem('googleAccessToken', response.accessToken);
+          } else {
+            console.warn('⚠️ Access Token не найден!');
+          }
+        },
+        error: (err) => {
+          console.error('❌ Ошибка получения Access Token:', err);
+        }
+      });
   }
 
   login(): void {
@@ -72,4 +93,5 @@ export class LoginComponent implements OnInit {
       },
     });
   }
+
 }

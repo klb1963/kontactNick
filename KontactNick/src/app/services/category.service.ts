@@ -1,7 +1,9 @@
+import { HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +11,7 @@ import { catchError, tap } from 'rxjs/operators';
 export class CategoryService {
   private baseUrl = 'http://localhost:8080/api';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient,  private authService: AuthService) {}
 
   /** ✅ Получение категории по ID */
   getCategoryById(categoryId: number): Observable<any> {
@@ -112,10 +114,25 @@ export class CategoryService {
 
   /** ✅ Создание категории (группы) в Google Contacts */
   createGoogleCategory(category: { name: string }): Observable<any> {
-    return this.http.post(`${this.baseUrl}/google/categories`, category, { withCredentials: true }).pipe(
+    const accessToken = this.authService.getAccessToken();  // ✅ Получаем токен
+
+    if (!accessToken) {
+      console.error("❌ Ошибка: отсутствует Google Access Token!");
+      return new Observable(observer => {
+        observer.error("No Access Token");
+        observer.complete();
+      });
+    }
+
+    const headers = new HttpHeaders({
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    });
+
+    return this.http.post(`${this.baseUrl}/google/categories`, category, { headers }).pipe(
       tap(() => console.log("✅ Google category created")),
       catchError(error => {
-        console.error("❌ Error creating Google category:", error);
+        console.error("❌ Ошибка при создании Google категории:", error);
         return of(null);
       })
     );

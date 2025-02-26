@@ -76,7 +76,7 @@ public class CategoryService {
     /**
      * 🔄 Создание группы в Google Contacts
      */
-    private String createGoogleContactGroup(String categoryName, String accessToken) {
+    public String createGoogleContactGroup(String categoryName, String accessToken) {
         log.info("🔄 Создаём группу '{}' в Google Contacts...", categoryName);
 
         if (accessToken == null || accessToken.isEmpty()) {
@@ -90,8 +90,9 @@ public class CategoryService {
         headers.setBearerAuth(accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        Map<String, String> requestBody = Map.of("name", categoryName);
-        HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
+        // ✅ Исправленный JSON
+        Map<String, Object> requestBody = Map.of("contactGroup", Map.of("name", categoryName));
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
@@ -121,14 +122,20 @@ public class CategoryService {
             return;
         }
 
+        if (accessToken == null || accessToken.isEmpty()) {
+            log.error("❌ Ошибка: Access Token отсутствует!");
+            return;
+        }
+
         String url = "https://people.googleapis.com/v1/" + resourceName;
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        Map<String, String> requestBody = Map.of("name", newName);
-        HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
+        // ✅ Исправленный JSON
+        Map<String, Object> requestBody = Map.of("contactGroup", Map.of("name", newName));
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
         try {
             ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.PATCH, requestEntity, Void.class);
@@ -143,4 +150,5 @@ public class CategoryService {
             log.error("❌ API Google Contacts временно недоступен", e);
         }
     }
+
 }
