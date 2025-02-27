@@ -51,14 +51,15 @@
     <strong>Organize your contacts by setting up Categories for them!</strong></p>
 </mat-card>
 
-<!-- ✅ Кнопка "Add Category" (в стиле Add Field) -->
-<div style="margin: 20px 0; display: flex; justify-content: flex-start;">
-  <button class="add-field-btn" (click)="openCategoryDialog()">➕ Add Category</button>
+<!-- ✅ Контейнер с заголовком и кнопкой -->
+<div style="display: flex; align-items: center; gap: 30px; margin: 20px 0;">
+  <h2 class="fields-title">📂 Your Categories</h2>
+  <button class="add-field-btn" (click)="openCategoryDialog()">🗄️ Add Category</button>
 </div>
 
 <!-- ✅ Категории -->
 <mat-card *ngIf="categories && categories.length > 0" class="fields-card">
-  <h2 class="fields-title">📂 Your Categories</h2>
+<!--  <h2 class="fields-title">📂 Your Categories</h2>-->
 
   <mat-card-content>
     <table class="fields-table">
@@ -88,9 +89,9 @@
         </td>
         <td>{{ category.description || 'No description' }}</td>
         <td>
-          <button class="field-action-btn" (click)="viewCategoryFields(category.id)">👀 View</button>
-          <button class="field-action-btn" (click)="openCategoryDialog(category)">✏️ Edit</button>
-          <button class="field-action-btn" (click)="deleteCategory(category.id)">🗑️ Delete</button>
+          <button class="field-action-btn" (click)="viewCategoryFields(category.id)">👀</button>
+          <button class="field-action-btn" (click)="openCategoryDialog(category)">✏️</button>
+          <button class="field-action-btn" (click)="deleteCategory(category.id)">❌</button>
           <button class="field-action-btn add-contact-btn" (click)="openAddContactDialog(category)">➕ Add Contact</button>
         </td>
       </tr>

@@ -38,9 +38,9 @@ export class AddContactDialogComponent implements OnInit {
     private authService: AuthService,
     private googleContactsService: GoogleContactsService
   ) {
-    console.log("📥 Received data in constructor:", data); // ✅ Проверяем, что пришло в `data`
+    console.log("📥 Received data in constructor:", data);
 
-    if (typeof data?.category === 'object') { // ✅ Проверяем, что `category` — это объект
+    if (typeof data?.category === 'object') {
       this.categoryId = data.category.id ?? 0;
       this.categoryName = data.category.name ?? 'Unknown';
     } else {
@@ -87,11 +87,10 @@ export class AddContactDialogComponent implements OnInit {
       return;
     }
 
-    // ✅ Создание объекта для Google API
+    // ✅ Создание объекта в корректном формате Google API
     const googleContact: any = {
-      name: this.contactData.name,
-      nickname: this.contactData.nick || '',
-      email: this.contactData.email
+      names: [{ givenName: this.contactData.name }],
+      emailAddresses: [{ value: this.contactData.email }]
     };
 
     // ✅ Добавляем телефон, если есть
@@ -99,7 +98,7 @@ export class AddContactDialogComponent implements OnInit {
       googleContact.phoneNumbers = [{ value: this.contactData.phone }];
     }
 
-    // ✅ Все остальные поля сохраняем в `otherFields`
+    // ✅ Дополнительные поля
     this.fields.forEach(field => {
       if (this.contactData.otherFields[field.name]) {
         googleContact[field.name] = this.contactData.otherFields[field.name];
@@ -112,24 +111,16 @@ export class AddContactDialogComponent implements OnInit {
   }
 
   saveContactToGoogle(contact: any): void {
-    this.authService.getGoogleAccessToken().subscribe((accessToken) => {
-      if (!accessToken) {
-        console.error("❌ No Google access token found!");
-        alert("⚠️ You need to log in with Google first!");
-        return;
+    this.googleContactsService.addToGoogleContacts(contact).subscribe({
+      next: (response) => {
+        console.log("✅ Contact successfully added to Google Contacts!", response);
+        alert("✅ Контакт успешно добавлен в Google!");
+        this.dialogRef.close(this.contactData);
+      },
+      error: (err) => {
+        console.error("❌ Error adding contact to Google:", err);
+        alert("❌ Ошибка при добавлении контакта в Google.");
       }
-
-      this.googleContactsService.addToGoogleContacts(contact).subscribe({
-        next: (response) => {
-          console.log("✅ Contact successfully added to Google Contacts!", response);
-          alert("✅ Контакт успешно добавлен в Google!");
-          this.dialogRef.close(this.contactData);
-        },
-        error: (err) => {
-          console.error("❌ Error adding contact to Google:", err);
-          alert("❌ Ошибка при добавлении контакта в Google.");
-        }
-      });
     });
   }
 
