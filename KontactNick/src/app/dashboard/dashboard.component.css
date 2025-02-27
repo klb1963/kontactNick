@@ -142,3 +142,15 @@
   margin-left: 6px;
   padding: 0;
 }
+
+.add-contact-btn {
+  background-color: #4CAF50 !important; /* Зелёный цвет */
+  color: white !important; /* Белый текст */
+  border-radius: 5px;
+  padding: 6px 12px;
+  font-weight: bold;
+}
+
+.add-contact-btn:hover {
+  background-color: #45a049 !important; /* Темнее при наведении */
+}
