@@ -119,7 +119,7 @@ export class AddContactDialogComponent implements OnInit {
         return;
       }
 
-      this.googleContactsService.addToGoogleContacts(contact, accessToken).subscribe({
+      this.googleContactsService.addToGoogleContacts(contact).subscribe({
         next: (response) => {
           console.log("✅ Contact successfully added to Google Contacts!", response);
           alert("✅ Контакт успешно добавлен в Google!");

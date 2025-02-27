@@ -41,18 +41,21 @@ export class AuthService {
   /** ✅ Проверка статуса аутентификации (JWT) */
   public checkAuthStatus(): Observable<boolean> {
     console.log('📡 Checking auth status...');
-    return this.http.get<{ authenticated: boolean }>(`${this.baseUrl}/check`, {
-      withCredentials: true
+
+    return this.http.get<{ authenticated: boolean }>(`${this.baseUrl}/auth/check`, {
+      withCredentials: true // ✅ Обязательно, чтобы браузер отправлял куки
     }).pipe(
       tap(response => console.log('🔍 Auth check response:', response)),
-      map((response: { authenticated: boolean }) => {
-        const isAuthenticated = !!response.authenticated; // ✅ Приводим к boolean
+
+      map((response: { authenticated: boolean }) => { // ✅ Явно указываем тип
+        const isAuthenticated = response.authenticated === 'true'; // ✅ Проверяем булево
         console.log("🔑 User is authenticated:", isAuthenticated);
         return isAuthenticated;
       }),
+
       catchError(error => {
         console.error('🚨 Auth check failed:', error);
-        return of(false);
+        return of(false); // ✅ Если ошибка — возвращаем false
       })
     );
   }

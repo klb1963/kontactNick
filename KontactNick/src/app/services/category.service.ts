@@ -2,20 +2,22 @@ import { HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import {catchError, switchMap, tap} from 'rxjs/operators';
+import { catchError, switchMap, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CategoryService {
-  private baseUrl = 'http://localhost:8080/api';
+  private baseUrl = environment.apiBaseUrl;
+  private googleBaseUrl = `${this.baseUrl}/google/contact-groups`;
 
-  constructor(private http: HttpClient,  private authService: AuthService) {}
+  constructor(private http: HttpClient, private authService: AuthService) {}
 
   /** ✅ Получение категории по ID */
   getCategoryById(categoryId: number): Observable<any> {
-    return this.http.get(`${this.baseUrl}/categories/${categoryId}`, { withCredentials: true }).pipe(
+    return this.http.get(`${this.baseUrl}/contact-groups/${categoryId}`, { withCredentials: true }).pipe(
       tap(category => console.log("✅ Category loaded:", category)),
       catchError(error => {
         console.error("❌ Error fetching category:", error);
@@ -26,7 +28,7 @@ export class CategoryService {
 
   /** ✅ Получение полей категории */
   getCategoryFields(categoryId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}/categories/${categoryId}/fields`, { withCredentials: true }).pipe(
+    return this.http.get<any[]>(`${this.baseUrl}/contact-groups/${categoryId}/fields`, { withCredentials: true }).pipe(
       tap(fields => console.log("📤 Fields loaded:", fields)),
       catchError(error => {
         console.error("❌ Error fetching fields:", error);
@@ -37,7 +39,7 @@ export class CategoryService {
 
   /** ✅ Добавление поля в категорию */
   addFieldToCategory(categoryId: number, field: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/categories/${categoryId}/field`, field, { withCredentials: true }).pipe(
+    return this.http.post(`${this.baseUrl}/contact-groups/${categoryId}/fields`, field, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Field added")),
       catchError(error => {
         console.error("❌ Error adding field:", error);
@@ -48,7 +50,7 @@ export class CategoryService {
 
   /** ✅ Обновление поля */
   updateField(categoryId: number, fieldId: number, field: any): Observable<any> {
-    return this.http.put(`${this.baseUrl}/categories/${categoryId}/fields/${fieldId}`, field, { withCredentials: true }).pipe(
+    return this.http.put(`${this.baseUrl}/contact-groups/${categoryId}/fields/${fieldId}`, field, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Field updated")),
       catchError(error => {
         console.error("❌ Error updating field:", error);
@@ -59,7 +61,7 @@ export class CategoryService {
 
   /** ✅ Удаление поля */
   deleteField(categoryId: number, fieldId: number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/categories/${categoryId}/fields/${fieldId}`, { withCredentials: true }).pipe(
+    return this.http.delete(`${this.baseUrl}/contact-groups/${categoryId}/fields/${fieldId}`, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Field deleted")),
       catchError(error => {
         console.error("❌ Error deleting field:", error);
@@ -70,7 +72,7 @@ export class CategoryService {
 
   /** ✅ Получение списка категорий пользователя */
   getUserCategories(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}/categories`, { withCredentials: true }).pipe(
+    return this.http.get<any[]>(`${this.baseUrl}/contact-groups`, { withCredentials: true }).pipe(
       tap(categories => console.log("✅ Categories loaded:", categories)),
       catchError(error => {
         console.error("❌ Error fetching categories:", error);
@@ -81,7 +83,7 @@ export class CategoryService {
 
   /** ✅ Создание новой категории */
   createCategory(category: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/categories`, category, { withCredentials: true }).pipe(
+    return this.http.post(`${this.baseUrl}/contact-groups`, category, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Category created")),
       catchError(error => {
         console.error("❌ Error creating category:", error);
@@ -92,7 +94,7 @@ export class CategoryService {
 
   /** ✅ Обновление категории */
   updateCategory(categoryId: number, category: any): Observable<any> {
-    return this.http.put(`${this.baseUrl}/categories/${categoryId}`, category, { withCredentials: true }).pipe(
+    return this.http.put(`${this.baseUrl}/contact-groups/${categoryId}`, category, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Category updated")),
       catchError(error => {
         console.error("❌ Error updating category:", error);
@@ -103,7 +105,7 @@ export class CategoryService {
 
   /** ✅ Удаление категории */
   deleteCategory(categoryId: number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/categories/${categoryId}`, { withCredentials: true }).pipe(
+    return this.http.delete(`${this.baseUrl}/contact-groups/${categoryId}`, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Category deleted")),
       catchError(error => {
         console.error("❌ Error deleting category:", error);
@@ -114,54 +116,34 @@ export class CategoryService {
 
   /** ✅ Создание категории (группы) в Google Contacts */
   createGoogleCategory(category: { name: string }): Observable<any> {
-    let accessToken = localStorage.getItem('googleAccessToken');  // ✅ Пробуем взять из локального хранилища
+    return this.authService.getGoogleAccessToken().pipe(
+      switchMap(token => {
+        if (!token) {
+          console.error("❌ Ошибка: не удалось получить Google Access Token!");
+          return of(null);
+        }
 
-    if (!accessToken) {
-      console.warn("⚠️ Access Token отсутствует в localStorage, запрашиваем у сервера...");
-      return this.authService.getGoogleAccessToken().pipe(
-        switchMap(token => {
-          if (!token) {
-            console.error("❌ Ошибка: не удалось получить Google Access Token!");
+        console.log("✅ Используем Google Access Token, продолжаем запрос...");
+
+        const headers = new HttpHeaders({
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        });
+
+        return this.http.post(`${this.googleBaseUrl}`, { contactGroup: { name: category.name } }, { headers }).pipe(
+          tap(() => console.log("✅ Google category created")),
+          catchError(error => {
+            console.error("❌ Ошибка при создании Google категории:", error);
             return of(null);
-          }
-
-          console.log("✅ Получен Google Access Token, продолжаем запрос...");
-
-          const headers = new HttpHeaders({
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          });
-
-          return this.http.post(`${this.baseUrl}/google/categories`, category, { headers }).pipe(
-            tap(() => console.log("✅ Google category created")),
-            catchError(error => {
-              console.error("❌ Ошибка при создании Google категории:", error);
-              return of(null);
-            })
-          );
-        })
-      );
-    }
-
-    console.log("✅ Используем токен из localStorage");
-
-    const headers = new HttpHeaders({
-      "Authorization": `Bearer ${accessToken}`,
-      "Content-Type": "application/json"
-    });
-
-    return this.http.post(`${this.baseUrl}/google/categories`, category, { headers }).pipe(
-      tap(() => console.log("✅ Google category created")),
-      catchError(error => {
-        console.error("❌ Ошибка при создании Google категории:", error);
-        return of(null);
+          })
+        );
       })
     );
   }
 
   /** ✅ Получение списка категорий (групп) из Google Contacts */
   getGoogleCategories(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}/google/categories`, { withCredentials: true }).pipe(
+    return this.http.get<any[]>(`${this.googleBaseUrl}`, { withCredentials: true }).pipe(
       tap(categories => console.log("✅ Google categories loaded:", categories)),
       catchError(error => {
         console.error("❌ Error fetching Google categories:", error);
@@ -172,7 +154,7 @@ export class CategoryService {
 
   /** ✅ Добавление контакта в категорию Google Contacts */
   addContactToGoogleCategory(categoryId: string, contactResourceName: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/google/categories/${categoryId}/add`, { resourceName: contactResourceName }, { withCredentials: true }).pipe(
+    return this.http.post(`${this.googleBaseUrl}/${categoryId}/add`, { resourceName: contactResourceName }, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Contact added to Google category")),
       catchError(error => {
         console.error("❌ Error adding contact to Google category:", error);
@@ -183,7 +165,7 @@ export class CategoryService {
 
   /** ✅ Удаление контакта из категории Google Contacts */
   removeContactFromGoogleCategory(categoryId: string, contactResourceName: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/google/categories/${categoryId}/remove`, { resourceName: contactResourceName }, { withCredentials: true }).pipe(
+    return this.http.post(`${this.googleBaseUrl}/${categoryId}/remove`, { resourceName: contactResourceName }, { withCredentials: true }).pipe(
       tap(() => console.log("✅ Contact removed from Google category")),
       catchError(error => {
         console.error("❌ Error removing contact from Google category:", error);
@@ -194,10 +176,12 @@ export class CategoryService {
 
   /** ✅ Добавление контакта и категории в Google Contacts */
   addContactToCategory(categoryId: number, contact: any) {
-    return this.http.post(`/api/google-contacts/add`, {
-      categoryId,
-      contact
-    });
+    return this.http.post(`${this.googleBaseUrl}/${categoryId}/contacts`, { contact }, { withCredentials: true }).pipe(
+      tap(() => console.log("✅ Contact added to category")),
+      catchError(error => {
+        console.error("❌ Error adding contact to category:", error);
+        return of(null);
+      })
+    );
   }
-
 }

@@ -101,13 +101,13 @@ public class AuthController {
      */
     @GetMapping("/check")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, String>> isAuthenticated(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<Map<String, Object>> isAuthenticated(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
             log.warn("❌ Authentication check failed: user is not authenticated");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("authenticated", "false"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("authenticated", false)); // 🔥 Булево значение!
         }
         log.info("✅ Authentication check: user is authenticated as {}", userDetails.getUsername());
-        return ResponseEntity.ok(Map.of("authenticated", "true", "email", userDetails.getUsername()));
+        return ResponseEntity.ok(Map.of("authenticated", true, "email", userDetails.getUsername())); // 🔥 Булево значение!
     }
 
     /**

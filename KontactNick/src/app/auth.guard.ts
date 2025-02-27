@@ -22,20 +22,19 @@ export class AuthGuard implements CanActivate {
 
     return this.authService.checkAuthStatus().pipe(
       tap(isAuthenticated => {
-        if (isAuthenticated) {
-          console.log('✅ AuthGuard: User is authenticated');
-        } else {
-          if (window.location.pathname !== '/login') {
-            console.warn('⛔ AuthGuard: Redirecting to login because user is not authenticated');
-          }
-          this.router.navigate(['/login']);
-        }
+        console.log('🔍 Auth check result:', isAuthenticated); // ✅ Проверяем, что реально приходит
       }),
-      map(isAuthenticated => isAuthenticated),
-      catchError(error => {
-        if (error.status !== 401) { // ✅ Показываем только важные ошибки
-          console.error('🚨 AuthGuard Error:', error);
+      map(isAuthenticated => {
+        if (!isAuthenticated) {
+          console.warn('⛔ AuthGuard: User not authenticated, redirecting to login');
+          this.router.navigate(['/login']);
+        } else {
+          console.log('✅ AuthGuard: User is authenticated, allowing access');
         }
+        return isAuthenticated;
+      }),
+      catchError(error => {
+        console.error('🚨 AuthGuard Error:', error);
         this.router.navigate(['/login']);
         return of(false);
       })
