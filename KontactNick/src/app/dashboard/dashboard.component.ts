@@ -168,39 +168,38 @@ export class DashboardComponent implements OnInit {
 
         action.subscribe(() => {
           this.loadCategories();
-
-          // ✅ После создания в БД создаем категорию в Google Contacts
-          this.categoryService.createGoogleCategory(result).subscribe(
-            () => console.log("✅ Категория создана в Google Contacts"),
-            (error) => console.error("❌ Ошибка при создании в Google:", error)
-          );
         });
-
       }
     });
   }
 
+// 🎯 Что улучшилось?
+// ✅ Более чистый код – без ненужной проверки category.fields.
+// ✅ Добавлена связь контакта с категорией – в result теперь contactGroupResourceName.
+// ✅ Обновление списка после сохранения – вызов this.loadCategories().
   openAddContactDialog(category: any) {
     console.log("📢 Opening Add Contact Dialog with category:", category);
 
-    if (!category.fields || category.fields.length === 0) {
-      console.warn("⚠️ No fields found for category:", category.name);
-      return;
-    }
-
     const dialogRef = this.dialog.open(AddContactDialogComponent, {
       width: '400px',
-      data: { category: { ...category } } // ✅ Передаём весь объект категории
+      data: { category } // ✅ Передаём весь объект категории
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         console.log("✅ Contact data received:", result);
-        // Отправляем контакт в выбранную категорию
-        this.categoryService.addContactToCategory(category.id, result).subscribe(
-          () => console.log("✅ Contact successfully saved in category"),
-          (error) => console.error("❌ Error saving contact:", error)
-        );
+
+        // ✅ Добавляем категорию в объект контакта перед отправкой
+        result.contactGroupResourceName = `contactGroups/${category.id}`;
+
+        // ✅ Отправляем контакт в выбранную категорию
+        this.categoryService.addContactToCategory(category.id, result).subscribe({
+          next: () => {
+            console.log("✅ Contact successfully saved in category");
+            this.loadCategories(); // ✅ Перезагружаем список категорий, если нужно
+          },
+          error: (error) => console.error("❌ Error saving contact:", error)
+        });
       }
     });
   }

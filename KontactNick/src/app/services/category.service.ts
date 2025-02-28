@@ -124,10 +124,11 @@ export class CategoryService {
         }
 
         console.log("✅ Используем Google Access Token, продолжаем запрос...");
-
+        console.log("Google Access Token:", token);
         const headers = new HttpHeaders({
           "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Accept": "application/json"
         });
 
         return this.http.post(`${this.googleBaseUrl}`, { contactGroup: { name: category.name } }, { headers }).pipe(

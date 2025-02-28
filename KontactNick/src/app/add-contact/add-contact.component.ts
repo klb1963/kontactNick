@@ -81,6 +81,11 @@ export class AddContactDialogComponent implements OnInit {
     });
   }
 
+// 🚀 Что изменилось?
+// ✅ Теперь контакт привязывается к категории в Google Contacts (contactGroupMemberships).
+// ✅ Используем contactGroupResourceName, если он есть, иначе формируем contactGroups/${categoryId}.
+// ✅ Перед закрытием диалога обновляем this.contactData, чтобы передать категорию обратно.
+
   save(): void {
     if (!this.contactData.name?.trim() || !this.contactData.email?.trim()) {
       alert("⚠️ Please enter a valid name and email!");
@@ -90,7 +95,10 @@ export class AddContactDialogComponent implements OnInit {
     // ✅ Создание объекта в корректном формате Google API
     const googleContact: any = {
       names: [{ givenName: this.contactData.name }],
-      emailAddresses: [{ value: this.contactData.email }]
+      emailAddresses: [{ value: this.contactData.email }],
+      contactGroupMemberships: [{
+        contactGroupResourceName: this.data.category.contactGroupResourceName || `contactGroups/${this.categoryId}`
+      }]
     };
 
     // ✅ Добавляем телефон, если есть
@@ -115,6 +123,9 @@ export class AddContactDialogComponent implements OnInit {
       next: (response) => {
         console.log("✅ Contact successfully added to Google Contacts!", response);
         alert("✅ Контакт успешно добавлен в Google!");
+
+        // ✅ Обновляем объект перед закрытием диалога
+        this.contactData.contactGroupResourceName = contact.contactGroupMemberships[0].contactGroupResourceName;
         this.dialogRef.close(this.contactData);
       },
       error: (err) => {

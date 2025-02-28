@@ -21,16 +21,18 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 
 //🔥 Что улучшено?
 //
-// ✅ Логируется отсутствие cookies
+//✅ Логируется отсутствие cookies
 //✅ Добавлен catch для ExpiredJwtException (чтобы отличать истекший токен)
 //✅ Разделены ошибки валидации и парсинга токена
 //✅ Логируется существующая аутентификация в SecurityContextHolder
 //✅ Чёткие и понятные логи на каждом этапе
 
+//✅ Теперь сервер умеет проверять Google Access Token (ya29...) в Authorization: Bearer
 
 @Slf4j
 @Component
@@ -38,13 +40,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final GoogleTokenValidator googleTokenValidator;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    public JwtAuthenticationFilter(TokenService tokenService, JwtTokenProvider jwtTokenProvider) {
+    public JwtAuthenticationFilter(TokenService tokenService, JwtTokenProvider jwtTokenProvider, GoogleTokenValidator googleTokenValidator) {
         this.tokenService = tokenService;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.googleTokenValidator = googleTokenValidator;
     }
 
     @Override
@@ -56,7 +60,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         log.info("🔍 JwtAuthenticationFilter: Incoming request -> {} {}", request.getMethod(), request.getRequestURI());
 
         String token = null;
+        String authHeader = request.getHeader("Authorization");
 
+        // 1️⃣ Проверяем заголовок Authorization (Google Access Token)
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+
+            if (token.startsWith("ya29.")) {
+                log.info("🔍 Detected Google Access Token, validating...");
+                if (googleTokenValidator.isValid(token)) {
+                    log.info("✅ Google Access Token is valid!");
+                    SecurityContextHolder.getContext().setAuthentication(
+                            new UsernamePasswordAuthenticationToken(token, null, new ArrayList<>())
+                    );
+                    filterChain.doFilter(request, response);
+                    return;
+                } else {
+                    log.error("❌ Invalid Google Access Token!");
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.getWriter().write("Invalid Google Token");
+                    return;
+                }
+            }
+        }
+
+        // 2️⃣ Проверяем JWT в куках
         if (request.getCookies() == null) {
             log.warn("🍪 JwtAuthenticationFilter: No cookies found in request.");
         } else {

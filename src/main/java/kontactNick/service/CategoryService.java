@@ -22,7 +22,7 @@ import java.util.Map;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final GoogleContactsService googleContactsService;
+    private final GoogleCategoryService googleCategoryService;
     private final OAuth2AuthenticationService oAuth2AuthenticationService;
 
     // 📖 Получение категорий пользователя
@@ -37,25 +37,17 @@ public class CategoryService {
     public Category createCategoryWithGoogleSync(Category category, User user) {
         log.info("📂 Создаём категорию '{}' для пользователя {}", category.getName(), user.getEmail());
 
-        try {
-            // ✅ Получаем валидный токен
-            String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
+        // ✅ Получаем валидный токен
+        String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
 
-            // 🔄 Проверяем, есть ли уже такая группа в Google Contacts, если нет — создаем
-            String googleResourceName = googleContactsService.createOrGetGoogleContactGroup(category.getName(), accessToken);
+        // 🔄 Создаём или получаем группу в Google Contacts
+        String googleResourceName = googleCategoryService.createOrGetGoogleCategory(category.getName(), accessToken);
 
-            if (googleResourceName != null) {
-                category.setGoogleResourceName(googleResourceName);
-                log.info("✅ Группа '{}' успешно создана/найдена в Google Contacts", category.getName());
-            } else {
-                log.warn("⚠️ Группа не найдена или не создана. Продолжаем без неё.");
-            }
 
-        } catch (Exception e) {
-            log.error("❌ Ошибка при работе с Google Contacts", e);
+        if (googleResourceName != null) {
+            category.setGoogleResourceName(googleResourceName);
         }
 
-        // ✅ Сохраняем категорию в БД только после успешного запроса к Google
         return categoryRepository.save(category);
     }
 
@@ -70,15 +62,8 @@ public class CategoryService {
         Category category = categoryRepository.findByIdAndUser(categoryId, user)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Категория не найдена"));
 
-        // 🔄 Удаляем из Google Contacts, если есть связанная группа
-        if (category.getGoogleResourceName() != null) {
-            try {
-                String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
-                googleContactsService.deleteGoogleContactGroup(category.getGoogleResourceName(), accessToken);
-            } catch (Exception e) {
-                log.error("❌ Ошибка при удалении категории '{}' из Google Contacts: {}", category.getName(), e.getMessage(), e);
-            }
-        }
+        // 🔄 Удаляем из Google Contacts
+        googleCategoryService.deleteGoogleCategory(category.getGoogleResourceName(), user);
 
         // 🗑 Удаляем из БД
         categoryRepository.delete(category);
@@ -100,26 +85,9 @@ public class CategoryService {
         category.setName(newName);
         category = categoryRepository.save(category);
 
-        try {
-            String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
-            String googleResourceName = category.getGoogleResourceName();
+        // 🔄 Обновляем группу в Google Contacts
+        googleCategoryService.updateGoogleCategory(category.getGoogleResourceName(), newName, user);
 
-            if (googleResourceName != null) {
-                log.info("🔄 Обновляем группу '{}' в Google Contacts...", oldName);
-                googleContactsService.updateGoogleContactGroup(googleResourceName, newName, accessToken);
-            } else {
-                log.warn("⚠ У категории '{}' нет связанной группы в Google Contacts. Создаём новую...", newName);
-                String newGoogleResourceName = googleContactsService.createOrGetGoogleContactGroup(newName, accessToken);
-                category.setGoogleResourceName(newGoogleResourceName);
-                categoryRepository.save(category);
-            }
-
-        } catch (Exception e) {
-            log.error("❌ Ошибка при обновлении Google Contact Group: {}", e.getMessage(), e);
-        }
-
-        log.info("✅ Категория ID={} успешно обновлена", categoryId);
         return category;
     }
-
 }

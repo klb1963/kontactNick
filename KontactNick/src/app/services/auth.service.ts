@@ -155,13 +155,14 @@ export class AuthService {
 
   /** ✅ Запрос Google Access Token */
   getGoogleAccessToken(): Observable<string | null> {
-    return this.http.get<{ accessToken?: string }>(this.googleTokenUrl, { withCredentials: true })
+    return this.http.get<{ google_access_token?: string }>(this.googleTokenUrl, { withCredentials: true })
       .pipe(
-        map(response => response.accessToken ?? null),
+        map(response => response.google_access_token ?? null),
         catchError(error => {
           console.error("❌ Ошибка при запросе Google Access Token:", error);
           return of(null);
         })
       );
   }
+
 }
