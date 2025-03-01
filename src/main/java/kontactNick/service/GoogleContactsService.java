@@ -1,6 +1,7 @@
 package kontactNick.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kontactNick.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -17,15 +18,66 @@ import java.util.Map;
 public class GoogleContactsService {
 
     private final RestTemplate restTemplate;
+    private final OAuth2AuthenticationService oAuth2AuthenticationService;
 
     /**
-     * ✅ fetchGoogleContacts
+     * ✅ Добавление контакта в группу Google Contacts
      */
-    public List<Map<String, Object>> fetchGoogleContacts(String accessToken) {
-        log.info("📡 Запрос контактов из Google Contacts...");
+    public ResponseEntity<?> addContactToGoogleCategory(User user, String contactGroupId, String contactId) {
+        log.info("📂 Добавляем контакт '{}' в категорию '{}' для пользователя '{}'", contactId, contactGroupId, user.getEmail());
 
-        if (accessToken == null || accessToken.isBlank()) {
-            log.warn("❌ Access Token отсутствует! Запрос невозможен.");
+        String accessToken;
+        try {
+            accessToken = oAuth2AuthenticationService.getValidAccessToken(user);  // ✅ Проверяет и обновляет токен
+        } catch (IllegalStateException e) {
+            log.error("❌ Ошибка получения Access Token для {}: {}", user.getEmail(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Не удалось получить Access Token"));
+        }
+
+        if (contactGroupId == null || contactGroupId.isBlank() || contactId == null || contactId.isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Оба параметра contactGroupId и contactId обязательны"));
+        }
+
+        // ✅ Проверяем, уже есть ли контакт в группе
+        if (isContactInGroup(user, contactId, accessToken)) {
+            log.info("⚠ Контакт '{}' уже в группе '{}'. Пропускаем добавление.", contactId, contactGroupId);
+            return ResponseEntity.ok(Map.of("message", "Контакт уже добавлен в категорию"));
+        }
+
+        String url = "https://people.googleapis.com/v1/contactGroups/" + contactGroupId + "/members:modify";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> requestBody = Map.of("resourceNamesToAdd", List.of(contactId));
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        log.info("📡 Отправляем запрос на добавление контакта в Google: {}", requestBody);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Map.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("✅ Контакт '{}' добавлен в категорию '{}'", contactId, contactGroupId);
+                return ResponseEntity.ok(Map.of("message", "Контакт успешно добавлен в категорию"));
+            }
+        } catch (HttpClientErrorException e) {
+            log.error("❌ Ошибка добавления контакта ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return ResponseEntity.status(e.getStatusCode()).body(Map.of("error", e.getResponseBodyAsString()));
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Ошибка добавления контакта"));
+    }
+
+    /**
+     * ✅ Получение списка контактов из Google Contacts
+     */
+    public List<Map<String, Object>> fetchGoogleContacts(User user) {
+        log.info("📡 Запрос контактов из Google Contacts для пользователя {}", user.getEmail());
+
+        String accessToken;
+        try {
+            accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
+        } catch (IllegalStateException e) {
+            log.error("❌ Ошибка получения Access Token для {}: {}", user.getEmail(), e.getMessage());
             return List.of();
         }
 
@@ -36,7 +88,6 @@ public class GoogleContactsService {
 
         try {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, Map.class);
-
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 List<Map<String, Object>> contacts = (List<Map<String, Object>>) response.getBody().getOrDefault("connections", List.of());
                 log.info("✅ Загружено {} контактов из Google Contacts.", contacts.size());
@@ -54,63 +105,21 @@ public class GoogleContactsService {
     }
 
     /**
-     * ✅ Добавление контакта в группу Google Contacts
-     */
-    public ResponseEntity<?> addContactToGoogleCategory(String contactGroupId, String contactId, String accessToken) {
-        log.info("📂 Добавляем контакт '{}' в категорию '{}' в Google Contacts...", contactId, contactGroupId);
-
-        if (accessToken == null || accessToken.isBlank()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Access Token отсутствует"));
-        }
-
-        if (contactGroupId == null || contactGroupId.isBlank() || contactId == null || contactId.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Оба параметра contactGroupId и contactId обязательны"));
-        }
-
-        // ✅ Проверяем, уже есть ли контакт в группе
-        if (isContactInGroup(contactGroupId, contactId, accessToken)) {
-            log.info("⚠ Контакт '{}' уже в группе '{}'. Пропускаем добавление.", contactId, contactGroupId);
-            return ResponseEntity.ok(Map.of("message", "Контакт уже добавлен в категорию"));
-        }
-
-        String url = "https://people.googleapis.com/v1/contactGroups/" + contactGroupId + "/members:modify";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        Map<String, Object> requestBody = Map.of("resourceNamesToAdd", List.of(contactId));
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-
-        // ===============================
-        log.info("🔑 Используем Google Access Token: {}", accessToken);
-        log.info("📡 Отправляем запрос на добавление контакта в Google: {}", requestBody);
-
-        try {
-            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Map.class);
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("✅ Контакт '{}' добавлен в категорию '{}'", contactId, contactGroupId);
-                return ResponseEntity.ok(Map.of("message", "Контакт успешно добавлен в категорию"));
-            }
-        } catch (HttpClientErrorException e) {
-            log.error("❌ Ошибка добавления контакта ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
-            return ResponseEntity.status(e.getStatusCode()).body(Map.of("error", e.getResponseBodyAsString()));
-        }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Ошибка добавления контакта"));
-    }
-
-    /**
      * 🔍 Проверка, находится ли контакт в группе Google
      */
-    public boolean isContactInGroup(String contactGroupId, String contactId, String accessToken) {
-        log.info("🔍 Проверяем, находится ли контакт '{}' в группе '{}'", contactId, contactGroupId);
+    public boolean isContactInGroup(User user, String contactGroupId, String contactId) {
+        log.info("🔍 Проверяем, находится ли контакт '{}' в группе '{}' для пользователя '{}'", contactId, contactGroupId, user.getEmail());
 
         if (contactGroupId == null || contactGroupId.isBlank() || contactId == null || contactId.isBlank()) {
             log.warn("⚠ Невозможно проверить, так как contactGroupId или contactId пустые.");
             return false;
         }
 
-        if (accessToken == null || accessToken.isBlank()) {
-            log.warn("⚠ Access Token отсутствует! Проверка невозможна.");
+        String accessToken;
+        try {
+            accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
+        } catch (IllegalStateException e) {
+            log.error("❌ Ошибка получения Access Token для {}: {}", user.getEmail(), e.getMessage());
             return false;
         }
 
@@ -120,7 +129,7 @@ public class GoogleContactsService {
         HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
 
         try {
-            while (url != null) { // Добавляем поддержку nextPageToken
+            while (url != null) { // Поддержка nextPageToken
                 ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, Map.class);
 
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {

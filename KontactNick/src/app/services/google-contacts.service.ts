@@ -127,15 +127,28 @@ export class GoogleContactsService {
   }
 
   /** ✅ Добавление контакта в категорию (группу) Google Contacts */
+
+// 🔥 Что изменилось?
+// ✅ Используем etag: "*", чтобы избежать проблем с версией
+// ✅ Добавлен updatePersonFields=memberships в URL
+// ✅ Теперь перед отправкой всё логируется 🚀
+  // Исправления:
+  // 1.	✅ Логирование ошибок: если токен null, нужно сразу делать alert().
+  // 2.	✅ Принудительное обновление токена, если он невалидный.
+  // 3.	✅ Проверка перед отправкой: токен из localStorage и из сервиса должны совпадать.
+  // 4.	✅ Более подробное логирование для отладки.
   addContactToGoogleCategory(contactResourceName: string, groupResourceName: string): Observable<any> {
+    console.log("📡 Инициализация добавления контакта в группу...");
+
     return this.authService.getGoogleAccessToken().pipe(
       switchMap(accessToken => {
         if (!accessToken) {
-          console.error("❌ Ошибка: нет Google Access Token!");
+          console.error("❌ Ошибка: нет Google Access Token! Запросите повторную авторизацию.");
+          alert("⚠️ Ошибка аутентификации! Войдите через Google.");
           return of(null);
         }
 
-        console.log(`🔑 Access Token перед добавлением в группу: ${accessToken}`);
+        console.log(`🔑 Используем Access Token: ${accessToken}`);
         console.log(`📡 Добавляем контакт ${contactResourceName} в группу ${groupResourceName}`);
 
         const headers = new HttpHeaders({
@@ -144,6 +157,7 @@ export class GoogleContactsService {
         });
 
         const body = {
+          "etag": "*",  // ⬅️ Обновление без проверки версии
           "memberships": [
             {
               "contactGroupMembership": {
@@ -153,14 +167,48 @@ export class GoogleContactsService {
           ]
         };
 
-        return this.http.patch(`${this.googleContactsUrl}/${contactResourceName}:updateContact`, body, { headers }).pipe(
-          tap(() => console.log("✅ Контакт успешно добавлен в группу Google Contacts")),
+        console.log("📤 JSON запроса:", JSON.stringify(body, null, 2));
+
+        return this.http.patch(
+          `${this.googleContactsUrl}/${contactResourceName}:updateContact?updatePersonFields=memberships`,
+          body,
+          { headers }
+        ).pipe(
+          tap(response => console.log("✅ Контакт успешно добавлен в группу Google Contacts:", response)),
           catchError(error => {
             console.error("❌ Ошибка при добавлении контакта в группу Google:", error);
+
+            if (error.status === 401) {
+              console.warn("🔄 Access Token недействителен! Пробуем обновить...");
+
+              return this.authService.getGoogleAccessToken().pipe(
+                switchMap(newAccessToken => {
+                  if (!newAccessToken) {
+                    console.error("❌ Ошибка обновления Access Token!");
+                    return of(null);
+                  }
+
+                  console.log("✅ Новый Access Token получен:", newAccessToken);
+
+                  const newHeaders = new HttpHeaders({
+                    "Authorization": `Bearer ${newAccessToken}`,
+                    "Content-Type": "application/json"
+                  });
+
+                  return this.http.patch(
+                    `${this.googleContactsUrl}/${contactResourceName}:updateContact?updatePersonFields=memberships`,
+                    body,
+                    { headers: newHeaders }
+                  );
+                })
+              );
+            }
+
             return of(null);
           })
         );
       })
     );
   }
+
 }

@@ -2,7 +2,7 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { catchError, Observable, of } from 'rxjs';
+import {catchError, Observable, of, shareReplay} from 'rxjs';
 import { map, tap, switchMap } from 'rxjs/operators';
 import {environment} from '../environments/environment';
 
@@ -135,22 +135,29 @@ export class AuthService {
     return null;
   }
 
-  /** ✅ Получение **Google Access Token** с сервера */
-  public getGoogleAccessToken(): Observable<string | null> {
-    console.log('📡 Fetching Google Access Token...');
-    return this.http.get<{ accessToken?: string }>(`${this.googleBaseUrl}/token`, {
-      withCredentials: true
+  /**
+   * ✅ Получение Google Access Token с сервера
+   * */
+  getGoogleAccessToken(): Observable<string | null> {
+    const url: string = `${environment.apiBaseUrl}/auth/google-token`; // Используем apiBaseUrl
+
+    return this.http.get<{ google_access_token?: string }>(url, {
+      withCredentials: true  // ⚠️ Передаём JWT/куки аутентификации
     }).pipe(
-      tap(response => console.log("🔑 Google Token Response:", response)),
-      map(response => response?.accessToken ?? null),
-      tap(token => {
-        if (token) {
-          localStorage.setItem('googleAccessToken', token);  // ✅ Сохраняем в локальное хранилище
-          console.log("✅ Google Access Token saved to localStorage.");
+      tap((response: { google_access_token?: string }) => {
+        console.log("🔄 Ответ от сервера при получении токена:", response);
+
+        if (!response.google_access_token) {
+          console.error("❌ Ошибка: сервер не вернул google_access_token!", response);
+          return;
         }
+
+        console.log("✅ Новый Google Access Token:", response.google_access_token);
+        localStorage.setItem("google_access_token", response.google_access_token);
       }),
-      catchError(error => {
-        console.error("🚨 Error fetching Google Access Token:", error);
+      map((response: { google_access_token?: string }) => response.google_access_token || null),
+      catchError(err => {
+        console.error("❌ Ошибка при получении Google Access Token!", err);
         return of(null);
       })
     );

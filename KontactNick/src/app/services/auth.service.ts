@@ -153,16 +153,30 @@ export class AuthService {
       );
   }
 
-  /** ✅ Запрос Google Access Token */
+  /** ✅ Получение Google Access Token с сервера */
   getGoogleAccessToken(): Observable<string | null> {
-    return this.http.get<{ google_access_token?: string }>(this.googleTokenUrl, { withCredentials: true })
-      .pipe(
-        map(response => response.google_access_token ?? null),
-        catchError(error => {
-          console.error("❌ Ошибка при запросе Google Access Token:", error);
-          return of(null);
-        })
-      );
+    const url: string = `${environment.apiBaseUrl}/auth/google-token`; // Используем apiBaseUrl
+
+    return this.http.get<{ google_access_token?: string }>(url, {
+      withCredentials: true  // ⚠️ Передаём JWT/куки аутентификации
+    }).pipe(
+      tap((response: { google_access_token?: string }) => {
+        console.log("🔄 Ответ от сервера при получении токена:", response);
+
+        if (!response.google_access_token) {
+          console.error("❌ Ошибка: сервер не вернул google_access_token!", response);
+          return;
+        }
+
+        console.log("✅ Новый Google Access Token:", response.google_access_token);
+        localStorage.setItem("google_access_token", response.google_access_token);
+      }),
+      map((response: { google_access_token?: string }) => response.google_access_token || null),
+      catchError(err => {
+        console.error("❌ Ошибка при получении Google Access Token!", err);
+        return of(null);
+      })
+    );
   }
 
 }

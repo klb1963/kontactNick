@@ -155,4 +155,6 @@ public class OAuth2AuthenticationService {
             throw new IllegalStateException("Ошибка при обновлении access_token", e);
         }
     }
+
+
 }
