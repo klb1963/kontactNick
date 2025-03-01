@@ -127,7 +127,6 @@ export class GoogleContactsService {
   }
 
   /** ✅ Добавление контакта в категорию (группу) Google Contacts */
-
 // 🔥 Что изменилось?
 // ✅ Используем etag: "*", чтобы избежать проблем с версией
 // ✅ Добавлен updatePersonFields=memberships в URL
@@ -139,6 +138,11 @@ export class GoogleContactsService {
   // 4.	✅ Более подробное логирование для отладки.
   addContactToGoogleCategory(contactResourceName: string, groupResourceName: string): Observable<any> {
     console.log("📡 Инициализация добавления контакта в группу...");
+
+    if (!contactResourceName || !groupResourceName) {
+      console.error("❌ Ошибка: отсутствуют обязательные параметры!");
+      return of({ error: "contactResourceName и groupResourceName обязательны" });
+    }
 
     return this.authService.getGoogleAccessToken().pipe(
       switchMap(accessToken => {
@@ -199,6 +203,12 @@ export class GoogleContactsService {
                     `${this.googleContactsUrl}/${contactResourceName}:updateContact?updatePersonFields=memberships`,
                     body,
                     { headers: newHeaders }
+                  ).pipe(
+                    tap(updatedResponse => console.log("✅ Повторный запрос успешен!", updatedResponse)),
+                    catchError(retryError => {
+                      console.error("❌ Ошибка при повторном запросе:", retryError);
+                      return of(null);
+                    })
                   );
                 })
               );
