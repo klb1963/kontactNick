@@ -96,15 +96,50 @@ public class GoogleContactsController {
         return googleContactsService.addContactToGoogleCategory(contactGroupId, contactId, accessToken);
     }
 
+//    /** ✅ Добавление контакта в Google-группу */
+//    @PostMapping("/contact-groups/{groupId}/add-contact")
+//    public ResponseEntity<?> addContactToGoogleCategory(
+//            @PathVariable String groupId,
+//            @RequestBody Map<String, String> body) {
+//
+//        String contactResourceName = body.get("contactResourceName");
+//        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+//
+//        User user = userRepository.findByEmail(email)
+//                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+//
+//        if (user.getGoogleAccessToken() == null) {
+//            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Google Access Token not found");
+//        }
+//
+//        log.info("📡 Добавляем контакт {} в группу {} (Google Contacts) для пользователя {}",
+//                contactResourceName, groupId, email);
+//
+//        googleContactsService.addContactToGoogleCategory(contactResourceName, "contactGroups/" + groupId, user.getGoogleAccessToken());
+//
+//        return ResponseEntity.ok(Map.of("message", "✅ Контакт добавлен в Google-группу"));
+//    }
+
+    // ✅ Улучшенная обработка заголовка Authorization
+    private String extractAccessToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        return authHeader.replace("Bearer ", "").trim();
+    }
+
     /** ✅ Добавление контакта в Google-группу */
-    @PostMapping("/contact-groups/{groupId}/add-contact")
+    @PostMapping("/contact-groups/{groupId}/contacts")
     public ResponseEntity<?> addContactToGoogleCategory(
             @PathVariable String groupId,
             @RequestBody Map<String, String> body) {
 
-        String contactResourceName = body.get("contactResourceName");
+        Object contactResource = body.get("contactResourceName");
+        if (!(contactResource instanceof String)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid contactResourceName format"));
+        }
+        String contactResourceName = (String) contactResource;
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -118,14 +153,6 @@ public class GoogleContactsController {
         googleContactsService.addContactToGoogleCategory(contactResourceName, "contactGroups/" + groupId, user.getGoogleAccessToken());
 
         return ResponseEntity.ok(Map.of("message", "✅ Контакт добавлен в Google-группу"));
-    }
-
-    // ✅ Улучшенная обработка заголовка Authorization
-    private String extractAccessToken(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return null;
-        }
-        return authHeader.replace("Bearer ", "").trim();
     }
 
 }

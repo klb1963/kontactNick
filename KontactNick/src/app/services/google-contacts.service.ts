@@ -12,6 +12,13 @@ import { environment } from '../../environments/environment';
 // ✅ Добавили метод addContactToGoogleCategory(...)
 // 	•	Теперь можно добавлять уже существующие контакты в группу Google.
 
+// 🔥 Что изменилось?
+// 1.	Удалена ненужная логика с refreshGoogleAccessToken() → теперь перед запросом всегда берём актуальный токен с бэкенда.
+// 2.	Каждый запрос в Google API теперь 100% использует свежий access_token.
+// 3.	Добавлено логирование перед каждым запросом, чтобы проще было отлаживать.
+// 4.	Убраны дублирующиеся проверки (например, не пытаемся обновлять токен сами, если его нет).
+// 5.	Все API-методы логируют токен перед отправкой (для удобной отладки).
+
 @Injectable({
   providedIn: 'root'
 })
@@ -20,7 +27,7 @@ export class GoogleContactsService {
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
-  /** ✅ Добавление контакта в Google Contacts (и в группу) */
+  /** ✅ Добавление контакта в Google Contacts */
   addToGoogleContacts(contact: any, groupResourceName?: string): Observable<any> {
     if (!contact || Object.keys(contact).length === 0) {
       console.error("❌ Ошибка: передан пустой объект контакта!");
@@ -35,18 +42,18 @@ export class GoogleContactsService {
           return of(null);
         }
 
+        console.log("🔑 Используем access_token:", accessToken);
+
         const headers = new HttpHeaders({
           "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         });
 
-        console.log("📡 Отправка контакта в Google:", contact);
-
         return this.http.post(`${this.googleContactsUrl}:createContact`, contact, { headers }).pipe(
           switchMap((response: any) => {
             console.log("✅ Контакт успешно добавлен в Google:", response);
 
-            // Если передана группа - добавляем контакт в неё
+            // ✅ Если передана группа — добавляем контакт в неё
             if (groupResourceName) {
               return this.addContactToGoogleCategory(response.resourceName, groupResourceName);
             }
@@ -76,6 +83,8 @@ export class GoogleContactsService {
           return of(null);
         }
 
+        console.log("🔑 Access Token перед удалением контакта:", accessToken);
+
         const headers = new HttpHeaders({
           "Authorization": `Bearer ${accessToken}`
         });
@@ -83,7 +92,7 @@ export class GoogleContactsService {
         return this.http.delete(`${this.googleContactsUrl}/${resourceName}`, { headers }).pipe(
           tap(() => console.log(`✅ Контакт ${resourceName} удалён из Google Contacts`)),
           catchError(error => {
-            console.error(`❌ Ошибка при удалении контакта (${resourceName}): ${error.message}`, error);
+            console.error(`❌ Ошибка при удалении контакта: ${error.message}`, error);
             return of(null);
           })
         );
@@ -99,6 +108,8 @@ export class GoogleContactsService {
           console.error("❌ Ошибка: нет Google Access Token!");
           return of([]);
         }
+
+        console.log("🔑 Access Token перед загрузкой контактов:", accessToken);
 
         const headers = new HttpHeaders({
           "Authorization": `Bearer ${accessToken}`
@@ -124,6 +135,9 @@ export class GoogleContactsService {
           return of(null);
         }
 
+        console.log(`🔑 Access Token перед добавлением в группу: ${accessToken}`);
+        console.log(`📡 Добавляем контакт ${contactResourceName} в группу ${groupResourceName}`);
+
         const headers = new HttpHeaders({
           "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json"
@@ -138,8 +152,6 @@ export class GoogleContactsService {
             }
           ]
         };
-
-        console.log(`📡 Добавляем контакт ${contactResourceName} в группу ${groupResourceName}`);
 
         return this.http.patch(`${this.googleContactsUrl}/${contactResourceName}:updateContact`, body, { headers }).pipe(
           tap(() => console.log("✅ Контакт успешно добавлен в группу Google Contacts")),

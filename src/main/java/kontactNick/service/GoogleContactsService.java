@@ -81,6 +81,10 @@ public class GoogleContactsService {
         Map<String, Object> requestBody = Map.of("resourceNamesToAdd", List.of(contactId));
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
+        // ===============================
+        log.info("🔑 Используем Google Access Token: {}", accessToken);
+        log.info("📡 Отправляем запрос на добавление контакта в Google: {}", requestBody);
+
         try {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Map.class);
             if (response.getStatusCode().is2xxSuccessful()) {

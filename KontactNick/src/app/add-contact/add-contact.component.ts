@@ -86,13 +86,14 @@ export class AddContactDialogComponent implements OnInit {
 // ✅ Используем contactGroupResourceName, если он есть, иначе формируем contactGroups/${categoryId}.
 // ✅ Перед закрытием диалога обновляем this.contactData, чтобы передать категорию обратно.
 
+
   save(): void {
     if (!this.contactData.name?.trim() || !this.contactData.email?.trim()) {
       alert("⚠️ Please enter a valid name and email!");
       return;
     }
 
-    // ✅ Создание объекта в корректном формате Google API
+    // ✅ Формируем объект контакта для Google API
     const googleContact: any = {
       names: [{ givenName: this.contactData.name }],
       emailAddresses: [{ value: this.contactData.email }],
@@ -101,20 +102,33 @@ export class AddContactDialogComponent implements OnInit {
       }]
     };
 
-    // ✅ Добавляем телефон, если есть
+    // ✅ Добавляем телефон, если он указан
     if (this.contactData.phone?.trim()) {
       googleContact.phoneNumbers = [{ value: this.contactData.phone }];
     }
 
-    // ✅ Дополнительные поля
-    this.fields.forEach(field => {
-      if (this.contactData.otherFields[field.name]) {
-        googleContact[field.name] = this.contactData.otherFields[field.name];
-      }
-    });
+    // ✅ Обрабатываем дополнительные поля пользователя (userDefined)
+    console.log("📌 Доступные поля категории:", this.fields);
+    console.log("📌 Доп. поля в contactData:", this.contactData.otherFields);
 
-    console.log("📤 Saving to Google Contacts:", googleContact);
+    if (this.fields.length > 0) {
+      googleContact.userDefined = this.fields
+        .map(field => {
+          const fieldValue = this.contactData.otherFields[field.name]?.trim();
+          console.log(`🔍 Обрабатываем поле: ${field.name}, значение: ${fieldValue}`);
 
+          return {
+            key: field.name,
+            value: fieldValue || ''
+          };
+        })
+        .filter(field => field.value !== ''); // убираем пустые
+
+      console.log("📤 Итоговый userDefined:", googleContact.userDefined);
+    }
+
+    // ✅ Отправляем контакт в Google API
+    console.log("📤 Отправка в Google Contacts:", googleContact);
     this.saveContactToGoogle(googleContact);
   }
 
