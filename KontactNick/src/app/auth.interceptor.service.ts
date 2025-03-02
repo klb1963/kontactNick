@@ -5,26 +5,13 @@ import { AuthService } from './services/auth.service';
 export const AuthInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
 
+  // ✅ Логируем исходный запрос
+  console.log("📡 Intercepting request:", req.url);
 
-  // ✅ Получаем токен из cookies
-  const token = getCookie('jwt-token');
-  console.log('🔍 Token from cookies:', token); // ⬅️ Добавляем лог
+  // ✅ Создаём клон запроса с `withCredentials: true`, чтобы браузер отправлял куки автоматически
+  const clonedReq = req.clone({
+    withCredentials: true, // 🔥 Гарантируем отправку HttpOnly куки `jwt-token`
+  });
 
-  if (token) {
-    const clonedReq = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`, // ✅ Добавляем заголовок
-      },
-      withCredentials: true, // ✅ Обязательно для отправки куки
-    });
-    return next(clonedReq);
-  }
-
-  return next(req);
+  return next(clonedReq);
 };
-
-// ✅ Функция для чтения cookies
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? match[2] : null;
-}

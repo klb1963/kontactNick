@@ -17,11 +17,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -153,4 +155,18 @@ public class CategoryGroupController {
         fieldService.deleteField(id, fieldId, email);
         return ResponseEntity.noContent().build();
     }
+
+    // ✅ Получение group_resource_name по id категории
+    @GetMapping("/{categoryId}/google-resource-name")
+    public ResponseEntity<Map<String, String>> getGoogleResourceName(@PathVariable Long categoryId, @AuthenticationPrincipal User user) {
+        Category category = categoryRepository.findByIdAndUser(categoryId, user)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Категория не найдена"));
+
+        if (category.getGoogleResourceName() == null || category.getGoogleResourceName().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Категория не связана с Google"));
+        }
+
+        return ResponseEntity.ok(Map.of("google_resource_name", category.getGoogleResourceName()));
+    }
+
 }

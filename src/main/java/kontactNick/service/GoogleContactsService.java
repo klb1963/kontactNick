@@ -1,13 +1,16 @@
 package kontactNick.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kontactNick.entity.Category;
 import kontactNick.entity.User;
+import kontactNick.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -19,14 +22,35 @@ public class GoogleContactsService {
 
     private final RestTemplate restTemplate;
     private final OAuth2AuthenticationService oAuth2AuthenticationService;
+    private final CategoryRepository categoryRepository;
 
     /**
      * ✅ Добавление контакта в группу Google Contacts
      */
-    public ResponseEntity<?> addContactToGoogleCategory(User user, String contactGroupId, String contactId) {
-        log.info("📂 Добавляем контакт '{}' в категорию '{}' для пользователя '{}'", contactId, contactGroupId, user.getEmail());
-
+    public ResponseEntity<?> addContactToGoogleCategory(User user, Long categoryId, String contactId) {
+        log.info("📂 Добавляем контакт '{}' в категорию ID: '{}' для пользователя '{}'", contactId, categoryId, user.getEmail());
+        // ✅ Получаем access_token для пользователя
         String accessToken;
+        try {
+            accessToken = oAuth2AuthenticationService.getValidAccessToken(user);  // ✅ Проверяет и обновляет токен
+            log.info("🔑 Текущий Google Access Token перед отправкой: {}", accessToken);
+        } catch (IllegalStateException e) {
+            log.error("❌ Ошибка получения Access Token для {}: {}", user.getEmail(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Не удалось получить Access Token"));
+        }
+
+        // 🔍 Ищем категорию в БД
+        Category category = categoryRepository.findByIdAndUser(categoryId, user)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Категория не найдена"));
+
+        // ✅ Достаём `google_resource_name`
+        String contactGroupId = category.getGoogleResourceName();
+        if (contactGroupId == null || contactGroupId.isBlank()) {
+            log.error("❌ Ошибка: у категории '{}' (ID: {}) отсутствует google_resource_name!", category.getName(), categoryId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Категория не привязана к Google"));
+        }
+
+        // ✅ Получаем access_token для пользователя
         try {
             accessToken = oAuth2AuthenticationService.getValidAccessToken(user);  // ✅ Проверяет и обновляет токен
         } catch (IllegalStateException e) {
@@ -34,8 +58,11 @@ public class GoogleContactsService {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Не удалось получить Access Token"));
         }
 
-        if (contactGroupId == null || contactGroupId.isBlank() || contactId == null || contactId.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Оба параметра contactGroupId и contactId обязательны"));
+        log.info("🔄 Новый Access Token получен и сохранён: {}", accessToken);
+
+        // ❌ Проверяем, не пустые ли значения
+        if (contactId == null || contactId.isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "contactId обязателен"));
         }
 
         // ✅ Проверяем, уже есть ли контакт в группе
@@ -44,6 +71,7 @@ public class GoogleContactsService {
             return ResponseEntity.ok(Map.of("message", "Контакт уже добавлен в категорию"));
         }
 
+        // 📡 Формируем запрос к Google API
         String url = "https://people.googleapis.com/v1/contactGroups/" + contactGroupId + "/members:modify";
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
@@ -64,6 +92,7 @@ public class GoogleContactsService {
             log.error("❌ Ошибка добавления контакта ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
             return ResponseEntity.status(e.getStatusCode()).body(Map.of("error", e.getResponseBodyAsString()));
         }
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Ошибка добавления контакта"));
     }
 

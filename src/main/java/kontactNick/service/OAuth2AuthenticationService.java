@@ -51,7 +51,6 @@ public class OAuth2AuthenticationService {
             return userRepository.save(newUser);
         });
 
-        // 🔹 Проверяем, что `authorizedClient` содержит Access Token
         if (authorizedClient == null || authorizedClient.getAccessToken() == null) {
             log.error("❌ Ошибка: access_token отсутствует у OAuth2AuthorizedClient");
             throw new IllegalStateException("Access token отсутствует.");
@@ -62,7 +61,7 @@ public class OAuth2AuthenticationService {
         String refreshToken = authorizedClient.getRefreshToken() != null ? authorizedClient.getRefreshToken().getTokenValue() : null;
         Instant expiresAt = authorizedClient.getAccessToken().getExpiresAt();
         if (expiresAt == null) {
-            expiresAt = Instant.now().plusSeconds(3600); // 1 час по умолчанию
+            expiresAt = Instant.now().plusSeconds(3600);
         }
 
         // 🔹 Сохраняем Google токены в БД
@@ -70,11 +69,9 @@ public class OAuth2AuthenticationService {
         user.setGoogleRefreshToken(refreshToken);
         user.setGoogleTokenExpiry(expiresAt);
 
-        // 💾 Обновляем пользователя в БД через репозиторий
         userRepository.save(user);
-        log.info("✅ Google токены сохранены для {}", email);
+        log.info("✅ Google токены сохранены для {}. Expiry: {}", email, expiresAt);
 
-        // 🔹 Генерируем JWT-токен и возвращаем
         return jwtTokenProvider.generateToken(user.getEmail(), Roles.ROLE_USER.name());
     }
 
@@ -86,11 +83,15 @@ public class OAuth2AuthenticationService {
             throw new IllegalStateException("Access token отсутствует: " + user.getEmail());
         }
 
+        log.info("🕒 Текущий access_token истекает в: {}", user.getGoogleTokenExpiry());
+        log.info("⌛ Текущее время сервера: {}", Instant.now());
+
         if (user.getGoogleTokenExpiry() == null || Instant.now().isAfter(user.getGoogleTokenExpiry())) {
             log.warn("⚠️ Access token истёк. Обновляем...");
             return refreshAccessToken(user);
         }
 
+        log.info("✅ Access token действителен, используем текущий.");
         return user.getGoogleAccessToken();
     }
 
@@ -116,6 +117,8 @@ public class OAuth2AuthenticationService {
 
         HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
 
+        log.info("📡 Отправляем запрос на обновление access_token для {}", user.getEmail());
+
         try {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     "https://oauth2.googleapis.com/token",
@@ -132,17 +135,17 @@ public class OAuth2AuthenticationService {
 
             String newAccessToken = (String) responseBody.get("access_token");
             int expiresIn = (Integer) responseBody.getOrDefault("expires_in", 3600);
-
-            // 🔹 Обновляем пользователя
             Instant expiryTime = Instant.now().plusSeconds(expiresIn);
+
             log.info("✅ Новый Access Token: {}", newAccessToken);
             log.info("⏳ Новый срок действия (expires_in): {} секунд", expiresIn);
             log.info("⏳ Новый Google Access Token истекает в: {}", expiryTime);
 
             user.setGoogleAccessToken(newAccessToken);
-            user.setGoogleTokenExpiry(Instant.now().plusSeconds(expiresIn)); // Всегда в UTC
-            // user.setGoogleExpiresIn(expiresIn); // Для проверки
+            user.setGoogleTokenExpiry(expiryTime);
+
             userRepository.save(user);
+            log.info("✅ Новый токен сохранён в БД для {}. Новый expiry: {}", user.getEmail(), expiryTime);
 
             // 🔄 Проверяем сохранение в БД
             User updatedUser = userRepository.findByEmail(user.getEmail()).orElseThrow();
@@ -155,6 +158,4 @@ public class OAuth2AuthenticationService {
             throw new IllegalStateException("Ошибка при обновлении access_token", e);
         }
     }
-
-
 }

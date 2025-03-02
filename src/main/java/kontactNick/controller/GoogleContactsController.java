@@ -94,20 +94,32 @@ public class GoogleContactsController {
 
     // ✅ Добавление контакта в категорию Google Contacts
     @PostMapping("/add-to-category")
-    public ResponseEntity<?> addContactToCategory(@AuthenticationPrincipal User user,
-                                                  @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> addContactToCategory(
+            @AuthenticationPrincipal User user,
+            @RequestBody Map<String, String> request) {
+
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Пользователь не аутентифицирован"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Пользователь не аутентифицирован"));
         }
 
-        String contactGroupId = request.get("contactGroupId");
+        // 🔹 Берём ID категории из запроса
+        String categoryIdStr = request.get("categoryId");
         String contactId = request.get("contactId");
 
-        if (contactGroupId == null || contactGroupId.isBlank() || contactId == null || contactId.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Оба параметра contactGroupId и contactId обязательны"));
+        // 🔹 Проверяем наличие параметров
+        if (categoryIdStr == null || categoryIdStr.isBlank() || contactId == null || contactId.isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Оба параметра categoryId и contactId обязательны"));
         }
 
-        return googleContactsService.addContactToGoogleCategory(user, contactGroupId, contactId);
+        try {
+            Long categoryId = Long.parseLong(categoryIdStr); // ✅ Преобразуем в Long
+            return googleContactsService.addContactToGoogleCategory(user, categoryId, contactId);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Неверный формат categoryId"));
+        }
     }
 
     /** ✅ Добавление контакта в Google-группу */
@@ -115,10 +127,11 @@ public class GoogleContactsController {
     public ResponseEntity<?> addContactToGoogleCategory(
             @PathVariable String groupId,
             @RequestBody Map<String, String> body,
-            @AuthenticationPrincipal User user) { // 🛠️ Заменяем SecurityContextHolder на @AuthenticationPrincipal
+            @AuthenticationPrincipal User user) {
 
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Пользователь не аутентифицирован"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Пользователь не аутентифицирован"));
         }
 
         // 📌 Проверяем, есть ли в теле запроса нужный ключ
@@ -135,9 +148,7 @@ public class GoogleContactsController {
         log.info("📡 Добавляем контакт {} в группу {} (Google Contacts) для пользователя {}",
                 contactResourceName, groupId, user.getEmail());
 
-        // ✅ Передаём user вместо raw accessToken
-        googleContactsService.addContactToGoogleCategory(user, contactResourceName, "contactGroups/" + groupId);
-
-        return ResponseEntity.ok(Map.of("message", "✅ Контакт добавлен в Google-группу"));
+        // ✅ Передаём user и корректные аргументы
+        return googleContactsService.addContactToGoogleCategory(user, Long.valueOf(groupId), contactResourceName);
     }
 }

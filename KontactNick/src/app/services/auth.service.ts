@@ -7,7 +7,7 @@ import { map, tap, switchMap, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 // 🔥 Что улучшено?
-//   1.	Используем environment.ts вместо хардкода (baseUrl, googleTokenUrl).
+// 1.	Используем environment.ts вместо хардкода (baseUrl, googleTokenUrl).
 // 2.	Исправлена ошибка с authenticated === 'true' → теперь это boolean.
 // 3.	Убрано хранение Google Access Token в localStorage (более безопасно).
 // 4.	Оптимизирован getGoogleAccessToken(), теперь просто запрашивает данные.
@@ -35,23 +35,41 @@ export class AuthService {
     return isPlatformBrowser(this.platformId);
   }
 
-  /** ✅ Получение токена с сервера */
-  getTokenFromServer(): Observable<string | null> {
-    return this.http.get<{ token?: string }>(`${this.baseUrl}/auth/token`, { withCredentials: true })
-      .pipe(
-        map(response => response?.token ?? null),
-        catchError(error => {
-          if (error.status !== 401) {
-            console.error("🚨 Unexpected error fetching token:", error);
-          }
-          return of(null);
-        })
-      );
+  private jwtAccessToken: string | null = null; // Локальное хранилище токена
+
+  /** ✅ Получение валидного JWT Access Token */
+  getValidJwtAccessToken(): Observable<string | null> {
+    if (this.jwtAccessToken) {
+      console.log("🔄 Используем кэшированный JWT Access Token:", this.jwtAccessToken);
+      return of(this.jwtAccessToken);
+    }
+
+    return this.getValidJwtAccessToken().pipe(
+      tap(jwtAccessToken => {
+        if (jwtAccessToken) {
+          console.log("✅ JWT Access Token получен:", jwtAccessToken);
+          this.jwtAccessToken = jwtAccessToken; // Кэшируем токен
+        } else {
+          console.warn("⚠️ JWT Access Token отсутствует!");
+        }
+      }),
+      catchError(error => {
+        console.error("❌ Ошибка при получении JWT Access Token:", error);
+        return of(null);
+      })
+    );
+  }
+
+  /** ✅ Принудительное обновление токена */
+  refreshJwtAccessToken(): Observable<string | null> {
+    console.log("🔄 Принудительное обновление JWT Access Token...");
+    this.jwtAccessToken = null; // Сбрасываем кэш
+    return this.getValidJwtAccessToken();
   }
 
   /** ✅ Проверка статуса входа */
   isLoggedIn(): Observable<boolean> {
-    return this.getTokenFromServer().pipe(
+    return this.getValidJwtAccessToken().pipe(
       map(token => !!token),
       catchError(() => of(false))
     );
@@ -59,7 +77,7 @@ export class AuthService {
 
   /** ✅ Декодирование email из токена */
   getCurrentUserEmail(): Observable<string | null> {
-    return this.getTokenFromServer().pipe(
+    return this.getValidJwtAccessToken().pipe(
       map(token => {
         if (token) {
           try {

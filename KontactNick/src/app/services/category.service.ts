@@ -1,10 +1,11 @@
 import { HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, switchMap, tap } from 'rxjs/operators';
+import {Observable, of, throwError} from 'rxjs';
+import {catchError, map, switchMap, tap} from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
+import { ApiService } from './api.service';
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +14,9 @@ export class CategoryService {
   private baseUrl = environment.apiBaseUrl;
   private googleBaseUrl = `${this.baseUrl}/google/contact-groups`;
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(private http: HttpClient,
+              private authService: AuthService,
+              private api: ApiService) {}
 
   /** ✅ Получение категории по ID */
   getCategoryById(categoryId: number): Observable<any> {
@@ -185,4 +188,32 @@ export class CategoryService {
       })
     );
   }
+
+  /** ✅ Получение google_resource_name для категории */
+  getGoogleResourceName(categoryId: number): Observable<string> {
+    return this.authService.getValidJwtAccessToken().pipe(
+      switchMap(jwtAccessToken => {
+        console.log("🔍 Используем JWT Access Token:", jwtAccessToken);
+
+        if (!jwtAccessToken) {
+          console.error("❌ Ошибка: отсутствует JWT Access Token!");
+          return throwError(() => new Error("Не удалось получить Google Resource Name: отсутствует токен"));
+        }
+
+        return this.http.get<{ google_resource_name: string }>(
+          `/api/categories/${categoryId}/google-resource-name`,
+          {
+            headers: new HttpHeaders({ Authorization: `Bearer ${jwtAccessToken}` }),
+            withCredentials: true
+          }
+        );
+      }),
+      map(response => (response as { google_resource_name: string }).google_resource_name), // ✅ Фикс ошибки типа
+      catchError(error => {
+        console.error("❌ Ошибка получения Google Resource Name:", error);
+        return throwError(() => new Error("Не удалось получить Google Resource Name"));
+      })
+    );
+  }
+
 }

@@ -33,6 +33,7 @@ import {AddContactDialogComponent} from '@app/add-contact/add-contact.component'
 })
 export class DashboardComponent implements OnInit {
   categories: any[] = []; // ✅ Инициализация массива
+  selectedCategory: any = null;
   displayedColumns: string[] = ['name', 'description', 'actions'];
   sortedCategories: any[] = [];
   sortOrder: 'asc' | 'desc' = 'asc'; // ✅ По умолчанию A → Z
@@ -173,30 +174,32 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-// 🎯 Что улучшилось?
-// ✅ Более чистый код – без ненужной проверки category.fields.
-// ✅ Добавлена связь контакта с категорией – в result теперь contactGroupResourceName.
-// ✅ Обновление списка после сохранения – вызов this.loadCategories().
+// диалоговое окно создания и сохранения контакта в категории
   openAddContactDialog(category: any) {
     console.log("📢 Opening Add Contact Dialog with category:", category);
 
+    if (!category || !category.id) {
+      console.error("❌ Ошибка: категория не содержит ID! Полные данные категории:", JSON.stringify(category, null, 2));
+      alert("⚠️ Ошибка: Невозможно создать контакт без ID категории!");
+      return;
+    }
+
+    this.selectedCategory = category;
+
     const dialogRef = this.dialog.open(AddContactDialogComponent, {
       width: '400px',
-      data: { category } // ✅ Передаём весь объект категории
+      data: { category } // ✅ Передаём только ID категории
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         console.log("✅ Contact data received:", result);
 
-        // ✅ Добавляем категорию в объект контакта перед отправкой
-        result.contactGroupResourceName = `contactGroups/${category.id}`;
-
-        // ✅ Отправляем контакт в выбранную категорию
+        // ✅ Убираем `googleResourceName`, передаём только `category.id`
         this.categoryService.addContactToCategory(category.id, result).subscribe({
           next: () => {
-            console.log("✅ Contact successfully saved in category");
-            this.loadCategories(); // ✅ Перезагружаем список категорий, если нужно
+            console.log("✅ Contact successfully saved in category:", category.name);
+            this.loadCategories(); // ✅ Перезагружаем список категорий
           },
           error: (error) => console.error("❌ Error saving contact:", error)
         });
@@ -204,6 +207,7 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  // удаление категории
   deleteCategory(id: number) {
     if (confirm('Are you sure you want to delete this category?')) {
       this.categoryService.deleteCategory(id).subscribe(() => this.loadCategories());
