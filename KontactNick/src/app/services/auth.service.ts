@@ -39,22 +39,44 @@ export class AuthService {
 
   /** ✅ Получение валидного JWT Access Token */
   getValidJwtAccessToken(): Observable<string | null> {
+    // Если токен уже есть в кэше, используем его
     if (this.jwtAccessToken) {
       console.log("🔄 Используем кэшированный JWT Access Token:", this.jwtAccessToken);
       return of(this.jwtAccessToken);
     }
 
-    return this.getValidJwtAccessToken().pipe(
-      tap(jwtAccessToken => {
+    // Запрашиваем токен с сервера
+    return this.getTokenFromServer().pipe(
+      tap((jwtAccessToken: string | null) => {
         if (jwtAccessToken) {
           console.log("✅ JWT Access Token получен:", jwtAccessToken);
           this.jwtAccessToken = jwtAccessToken; // Кэшируем токен
         } else {
           console.warn("⚠️ JWT Access Token отсутствует!");
+          this.jwtAccessToken = null;
         }
       }),
       catchError(error => {
         console.error("❌ Ошибка при получении JWT Access Token:", error);
+        this.jwtAccessToken = null; // Сбрасываем кэш при ошибке
+        return of(null);
+      })
+    );
+  }
+
+  /** ✅ Запрос нового JWT Access Token с сервера */
+  getTokenFromServer(): Observable<string | null> {
+    return this.http.get<{ token?: string }>(`${this.baseUrl}/auth/token`, { withCredentials: true }).pipe(
+      map(response => response?.token ?? null),
+      tap(token => {
+        if (token) {
+          console.log("✅ Новый JWT Access Token получен с сервера:", token);
+        } else {
+          console.warn("⚠️ Сервер не вернул токен.");
+        }
+      }),
+      catchError(error => {
+        console.error("❌ Ошибка при запросе JWT Access Token с сервера:", error);
         return of(null);
       })
     );
