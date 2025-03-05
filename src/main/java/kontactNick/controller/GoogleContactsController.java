@@ -11,12 +11,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -156,6 +158,7 @@ public class GoogleContactsController {
     }
 
 
+    /** ✅ Создание контакта в Google-группе */
     @PostMapping("/create-contact")
     public ResponseEntity<String> createGoogleContact(@RequestBody Map<String, Object> contactData,
                                                       @RequestHeader("Authorization") String token) {
@@ -174,5 +177,50 @@ public class GoogleContactsController {
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBodyAsString());
         }
     }
+
+    @PostMapping("/update-contact")
+    public ResponseEntity<?> updateGoogleContact(@RequestBody Map<String, Object> payload,
+                                                 @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+        }
+
+        String email = userDetails.getUsername();
+        log.info("🔍 Обновление Google-контакта для {}", email);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Пользователь не найден"));
+
+        String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
+        if (accessToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid Google Access Token"));
+        }
+
+        String resourceName = (String) payload.get("resourceName");
+        String googleResourceName = (String) payload.get("googleResourceName");
+
+        log.info("📌 Обновляем контакт {} в категории {}", resourceName, googleResourceName);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + accessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = Map.of(
+                "memberships", List.of(Map.of("contactGroupMembership", Map.of("contactGroupResourceName", googleResourceName))),
+                "updateMask", "memberships"
+        );
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "https://people.googleapis.com/v1/" + resourceName + ":updateContact",
+                HttpMethod.PATCH,
+                requestEntity,
+                String.class
+        );
+
+        return ResponseEntity.ok(response.getBody());
+    }
+
 
 }

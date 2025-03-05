@@ -69,8 +69,9 @@ export class GoogleContactsService {
   }
 
 
+  /** ✅ Добавление контакта в категорию (группу) Google Contacts */
   addContactToGoogleCategory(resourceName: string, googleResourceName: string): Observable<any> {
-    const url = `https://people.googleapis.com/v1/${resourceName}:updateContact`;
+    const url = `http://localhost:8080/api/google/update-contact`;
 
     return this.authService.getGoogleAccessToken().pipe(
       switchMap(accessToken => {
@@ -87,11 +88,11 @@ export class GoogleContactsService {
         });
 
         const body = {
-          memberships: [{ contactGroupMembership: { contactGroupResourceName: googleResourceName } }],
-          updateMask: "memberships"
+          resourceName: resourceName,
+          googleResourceName: googleResourceName
         };
 
-        return this.http.patch(url, body, { headers }).pipe(
+        return this.http.post(url, body, { headers }).pipe(
           tap(() => console.log("✅ Контакт добавлен в категорию!")),
           catchError(error => {
             console.error("❌ Ошибка при добавлении в категорию:", error);
