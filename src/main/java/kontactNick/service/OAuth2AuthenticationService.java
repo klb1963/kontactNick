@@ -75,6 +75,9 @@ public class OAuth2AuthenticationService {
         return jwtTokenProvider.generateToken(user.getEmail(), Roles.ROLE_USER.name());
     }
 
+    /**
+     * ✅ Дает валидный Google Access Token
+     */
     public String getValidAccessToken(User user) {
         log.info("🔍 Проверяем access_token для {}", user.getEmail());
 
@@ -88,7 +91,21 @@ public class OAuth2AuthenticationService {
 
         if (user.getGoogleTokenExpiry() == null || Instant.now().isAfter(user.getGoogleTokenExpiry())) {
             log.warn("⚠️ Access token истёк. Обновляем...");
-            return refreshAccessToken(user);
+
+            try {
+                String newAccessToken = refreshAccessToken(user);
+
+                if (newAccessToken == null || newAccessToken.isEmpty()) {
+                    throw new IllegalStateException("❌ Ошибка: не удалось обновить access_token, требуется повторная авторизация");
+                }
+
+                log.info("✅ Новый access_token успешно получен: {}", newAccessToken);
+                return newAccessToken;
+
+            } catch (Exception e) {
+                log.error("❌ Ошибка обновления токена: {}", e.getMessage());
+                throw new IllegalStateException("❌ Ошибка при обновлении access_token. Требуется повторная авторизация.");
+            }
         }
 
         log.info("✅ Access token действителен, используем текущий.");

@@ -9,6 +9,7 @@ import kontactNick.dto.UserDto;
 import kontactNick.entity.User;
 import kontactNick.repository.UserRepository;
 import kontactNick.security.util.JwtTokenProvider;
+import kontactNick.service.OAuth2AuthenticationService;
 import kontactNick.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class AuthController {
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final OAuth2AuthenticationService oAuth2AuthenticationService;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserDto userDto) {
@@ -111,7 +113,7 @@ public class AuthController {
     }
 
     /**
-     * ✅ Получение access_token Google
+     * ✅ Получение access_token Google с автоматическим обновлением при необходимости
      */
     @GetMapping("/google-token")
     public ResponseEntity<?> getGoogleToken(HttpServletRequest request) {
@@ -124,7 +126,11 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Google token not found"));
         }
 
-        String accessToken = userOpt.get().getGoogleAccessToken();
+        User user = userOpt.get();
+
+        // ✅ Проверяем срок действия токена перед возвратом
+        String accessToken = oAuth2AuthenticationService.getValidAccessToken(user);
+
         log.info("✅ Возвращаем Google Access Token для {}: {}", email, accessToken);
         return ResponseEntity.ok(Map.of("google_access_token", accessToken));
     }
