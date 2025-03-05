@@ -8,14 +8,20 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import kontactNick.entity.Roles;
+import kontactNick.entity.User;
+import kontactNick.repository.UserRepository;
 import kontactNick.security.util.JwtTokenProvider;
 import kontactNick.service.TokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -23,16 +29,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
-
-//🔥 Что улучшено?
-//
-//✅ Логируется отсутствие cookies
-//✅ Добавлен catch для ExpiredJwtException (чтобы отличать истекший токен)
-//✅ Разделены ошибки валидации и парсинга токена
-//✅ Логируется существующая аутентификация в SecurityContextHolder
-//✅ Чёткие и понятные логи на каждом этапе
-
-//✅ Теперь сервер умеет проверять Google Access Token (ya29...) в Authorization: Bearer
+import java.util.List;
 
 @Slf4j
 @Component
@@ -62,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = null;
         String authHeader = request.getHeader("Authorization");
 
-        // 1️⃣ Проверяем заголовок Authorization (Google Access Token)
+        // 1️⃣ Проверяем заголовок Authorization (Google Access Token или JWT)
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
 
@@ -84,10 +81,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        // 2️⃣ Проверяем JWT в куках
-        if (request.getCookies() == null) {
-            log.warn("🍪 JwtAuthenticationFilter: No cookies found in request.");
-        } else {
+        // ✅ Если токен уже найден в Authorization и это НЕ Google Access Token, пропускаем проверку в cookies
+        boolean tokenAlreadyChecked = (token != null && !token.startsWith("ya29."));
+
+        // 2️⃣ Проверяем JWT в куках (если его еще нет)
+        if (!tokenAlreadyChecked && request.getCookies() != null) {
             log.debug("🍪 JwtAuthenticationFilter: Checking cookies for JWT token...");
             token = tokenService.extractTokenFromCookies(request);
 
@@ -107,7 +105,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (token == null) {
-            log.warn("❌ JwtAuthenticationFilter: No valid JWT token found in cookies.");
+            log.warn("❌ JwtAuthenticationFilter: No valid JWT token found.");
             filterChain.doFilter(request, response);
             return;
         }
@@ -135,12 +133,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 log.debug("🔐 JwtAuthenticationFilter: No existing authentication found, setting new authentication...");
 
-                UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                        email, "", Collections.singletonList(new SimpleGrantedAuthority(role))
-                );
+                // ✅ Создаём реальный объект User (а не просто email)
+                User user = new User();
+                user.setEmail(email);
+                user.setRole(Roles.valueOf(role)); // 👈 Преобразуем строку в Enum
 
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -161,6 +160,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             response.getWriter().write("Invalid token");
             return;
         }
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        log.info("🔐 SecurityContextHolder now contains: {}", (auth != null) ? auth.getName() : "null");
 
         filterChain.doFilter(request, response);
     }

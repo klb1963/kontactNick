@@ -1,10 +1,12 @@
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
+import {AuthService} from '@app/services/auth.service';
 
 export const appConfig = {
   providers: [
     provideRouter(routes),
-    provideHttpClient(withInterceptors([])) // ✅ Исправлено: заменили withFetch() на стандартный HTTP-клиент
+    provideHttpClient(),
+    AuthService
   ],
 };

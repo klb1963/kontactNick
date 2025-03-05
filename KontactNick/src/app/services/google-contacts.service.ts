@@ -5,20 +5,6 @@ import { catchError, switchMap, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 
-// 🔥 Что улучшилось?
-// ✅ Теперь можно сразу добавить контакт в группу при создании
-// 	•	Если передан groupResourceName, контакт будет сразу добавлен в группу после создания.
-// 	•	Если groupResourceName не указан → просто создаст контакт.
-// ✅ Добавили метод addContactToGoogleCategory(...)
-// 	•	Теперь можно добавлять уже существующие контакты в группу Google.
-
-// 🔥 Что изменилось?
-// 1.	Удалена ненужная логика с refreshGoogleAccessToken() → теперь перед запросом всегда берём актуальный токен с бэкенда.
-// 2.	Каждый запрос в Google API теперь 100% использует свежий access_token.
-// 3.	Добавлено логирование перед каждым запросом, чтобы проще было отлаживать.
-// 4.	Убраны дублирующиеся проверки (например, не пытаемся обновлять токен сами, если его нет).
-// 5.	Все API-методы логируют токен перед отправкой (для удобной отладки).
-
 @Injectable({
   providedIn: 'root'
 })
@@ -49,7 +35,7 @@ export class GoogleContactsService {
           "Content-Type": "application/json"
         });
 
-        return this.http.post(`${this.googleContactsUrl}:createContact`, contact, { headers }).pipe(
+        return this.http.post(`${this.googleContactsUrl}:createContact`, contact, { headers, withCredentials: true }).pipe(
           switchMap((response: any) => {
             console.log("✅ Контакт успешно добавлен в Google:", response);
 
@@ -89,7 +75,7 @@ export class GoogleContactsService {
           "Authorization": `Bearer ${accessToken}`
         });
 
-        return this.http.delete(`${this.googleContactsUrl}/${resourceName}`, { headers }).pipe(
+        return this.http.delete(`${this.googleContactsUrl}/${resourceName}`, { headers, withCredentials: true } ).pipe(
           tap(() => console.log(`✅ Контакт ${resourceName} удалён из Google Contacts`)),
           catchError(error => {
             console.error(`❌ Ошибка при удалении контакта: ${error.message}`, error);
@@ -115,7 +101,7 @@ export class GoogleContactsService {
           "Authorization": `Bearer ${accessToken}`
         });
 
-        return this.http.get<any[]>(`${this.googleContactsUrl}/me/connections?personFields=names,emailAddresses`, { headers }).pipe(
+        return this.http.get<any[]>(`${this.googleContactsUrl}/me/connections?personFields=names,emailAddresses`, { headers, withCredentials: true }).pipe(
           tap(contacts => console.log("✅ Загружены контакты из Google Contacts:", contacts)),
           catchError(error => {
             console.error(`❌ Ошибка при загрузке контактов: ${error.message}`, error);
@@ -176,7 +162,7 @@ export class GoogleContactsService {
         return this.http.patch(
           `${this.googleContactsUrl}/${contactResourceName}:updateContact?updatePersonFields=memberships`,
           body,
-          { headers }
+          { headers, withCredentials: true }
         ).pipe(
           tap(response => console.log("✅ Контакт успешно добавлен в группу Google Contacts:", response)),
           catchError(error => {
@@ -202,7 +188,7 @@ export class GoogleContactsService {
                   return this.http.patch(
                     `${this.googleContactsUrl}/${contactResourceName}:updateContact?updatePersonFields=memberships`,
                     body,
-                    { headers: newHeaders }
+                    { headers: newHeaders, withCredentials: true }
                   ).pipe(
                     tap(updatedResponse => console.log("✅ Повторный запрос успешен!", updatedResponse)),
                     catchError(retryError => {

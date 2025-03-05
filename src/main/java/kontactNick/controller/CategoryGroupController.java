@@ -25,6 +25,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/contact-groups")
@@ -38,6 +41,7 @@ public class CategoryGroupController {
     private final FieldService fieldService;
     private final CategoryService categoryService;
     private final GoogleContactsService googleContactsService;
+    private static final Logger logger = LoggerFactory.getLogger(CategoryGroupController.class);
 
     // ✅ Создание категории (синхронизация с Google Contacts)
     @PostMapping
@@ -158,14 +162,36 @@ public class CategoryGroupController {
 
     // ✅ Получение group_resource_name по id категории
     @GetMapping("/{categoryId}/google-resource-name")
-    public ResponseEntity<Map<String, String>> getGoogleResourceName(@PathVariable Long categoryId, @AuthenticationPrincipal User user) {
-        Category category = categoryRepository.findByIdAndUser(categoryId, user)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Категория не найдена"));
+    public ResponseEntity<Map<String, String>> getGoogleResourceName(
+            @PathVariable Long categoryId,
+            @AuthenticationPrincipal User user) {
+
+        logger.info("🔍 Запрос получения Google Resource Name для категории ID: {}, от пользователя: {}", categoryId, user.getEmail());
+
+        // 🔥 Загружаем пользователя из базы
+        User persistedUser = userRepository.findByEmail(user.getEmail()).orElse(null);
+
+        if (persistedUser == null) {
+            logger.warn("❌ Пользователь {} не найден в базе данных", user.getEmail());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Пользователь не найден"));
+        }
+
+        // 🔍 Ищем категорию
+        Category category = categoryRepository.findByIdAndUser(categoryId, persistedUser).orElse(null);
+
+        if (category == null) {
+            logger.warn("❌ Категория ID {} не найдена для пользователя {}", categoryId, user.getEmail());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Категория не найдена"));
+        }
+
+        logger.info("✅ Найдена категория: {}, google_resource_name: {}", category.getName(), category.getGoogleResourceName());
 
         if (category.getGoogleResourceName() == null || category.getGoogleResourceName().isBlank()) {
+            logger.warn("⚠️ Категория ID {} не связана с Google!", categoryId);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Категория не связана с Google"));
         }
 
+        logger.info("📌 Отправляем google_resource_name: {}", category.getGoogleResourceName());
         return ResponseEntity.ok(Map.of("google_resource_name", category.getGoogleResourceName()));
     }
 

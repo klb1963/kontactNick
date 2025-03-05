@@ -50,7 +50,16 @@ export class DashboardComponent implements OnInit {
   private authService = inject(AuthService);
 
   ngOnInit(): void {
-    this.authService.isLoggedIn().subscribe(isAuth => {
+    console.log("📡 Проверяем `AuthService` внутри DashboardComponent:", this.authService);
+
+    if (!this.authService) {
+      console.error("❌ Ошибка: `AuthService` не проинициализирован!");
+    } else {
+      console.log("✅ `AuthService` успешно загружен!");
+    }
+
+    this.authService.checkAuthStatus().subscribe(isAuth => {
+      console.log("🔄 Результат `checkAuthStatus()`:", isAuth);
       if (isAuth) {
         this.loadCategories();
         this.loadUserProfile();

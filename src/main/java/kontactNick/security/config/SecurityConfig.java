@@ -77,6 +77,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(AUTH_WHITELIST).permitAll()
                         .requestMatchers("/", "/home").permitAll()
+                        .requestMatchers("/api/categories/*/google-resource-name").permitAll()
                         .requestMatchers("/api/profile").authenticated()
                         .requestMatchers("/api/auth/google-token").authenticated() // Доступ только с JWT
                         .requestMatchers("/api/categories/**").hasAuthority("ROLE_USER")

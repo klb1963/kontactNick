@@ -57,6 +57,7 @@ logging:
     kontactNick.controller: DEBUG
     kontactNick.service: DEBUG
     org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: DEBUG
+    root=INFO:
 
 jwt:
   secret: 2G1yPq6zUe1Bd8VyL3s9QoYkRfC7XhMzWa4JtNpVbKmZ5A6XGd9Y3L7B1Q8R0V2J

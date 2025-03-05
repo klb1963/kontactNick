@@ -6,13 +6,6 @@ import { Observable, of } from 'rxjs';
 import { map, tap, switchMap, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
-// 🔥 Что улучшено?
-// 1.	Используем environment.ts вместо хардкода (baseUrl, googleTokenUrl).
-// 2.	Исправлена ошибка с authenticated === 'true' → теперь это boolean.
-// 3.	Убрано хранение Google Access Token в localStorage (более безопасно).
-// 4.	Оптимизирован getGoogleAccessToken(), теперь просто запрашивает данные.
-// 5.	Код более читаемый, лучше логируются ошибки.
-
 /** ✅ Интерфейс для ответа сервера */
 interface GoogleAuthResponse {
   accessToken: string;

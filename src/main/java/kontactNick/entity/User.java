@@ -5,9 +5,13 @@ import jakarta.persistence.*;
 import kontactNick.entity.Category;
 import kontactNick.entity.Roles;
 import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Getter
@@ -18,7 +22,7 @@ import java.util.List;
 @ToString(exclude = "categories")  // ✅ Избегает рекурсии при логировании
 @Entity
 @Table(name = "users") // Явное указание имени таблицы
-public class User {
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,4 +59,14 @@ public class User {
 
     @Column(nullable = true)
     private Instant googleTokenExpiry;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority(role.name()));
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
 }

@@ -9,7 +9,8 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatInputModule} from '@angular/material/input';
 import {MatButtonModule} from '@angular/material/button';
 import {MatDialogModule} from '@angular/material/dialog';
-import {map, switchMap} from 'rxjs/operators';
+import {map, switchMap, take, tap} from 'rxjs/operators';
+import {catchError, throwError} from 'rxjs';
 
 @Component({
   selector: 'app-add-contact-dialog',
@@ -99,38 +100,46 @@ export class AddContactDialogComponent implements OnInit {
     console.log("🔄 Проверяем access_token перед отправкой контакта...");
 
     this.authService.getGoogleAccessToken().pipe(
-      map(accessToken => {
+      take(1), // ✅ Берем только первый ответ, избегаем утечек
+      tap(accessToken => {
         if (!accessToken) {
           throw new Error("❌ Ошибка: нет валидного Google Access Token!");
         }
         console.log("✅ Используем Google Access Token:", accessToken);
-        return accessToken;
       }),
       switchMap(accessToken =>
         this.categoryService.getGoogleResourceName(this.categoryId).pipe(
-          map(googleResourceName => ({accessToken, googleResourceName}))
+          tap(googleResourceName => {
+            console.log("✅ Получен Google Resource Name:", googleResourceName);
+          }),
+          map(googleResourceName => ({ accessToken, googleResourceName })),
+          catchError(error => {
+            console.error("❌ Ошибка получения Google Resource Name:", error);
+            alert("❌ Ошибка: не удалось получить Google Resource Name.");
+            return throwError(() => error);
+          })
         )
       )
     ).subscribe({
-      next: ({accessToken, googleResourceName}) => {
+      next: ({ accessToken, googleResourceName }) => {
         console.log("✅ Получен Google Resource Name:", googleResourceName);
 
         // 📌 Формируем объект контакта для Google API
         const googleContact: any = {
-          names: [{givenName: this.contactData.name}],
-          emailAddresses: [{value: this.contactData.email}],
-          memberships: [{contactGroupMembership: {contactGroupResourceName: googleResourceName}}]
+          names: [{ givenName: this.contactData.name }],
+          emailAddresses: [{ value: this.contactData.email }],
+          memberships: [{ contactGroupMembership: { contactGroupResourceName: googleResourceName } }]
         };
 
         if (this.contactData.phone?.trim()) {
-          googleContact.phoneNumbers = [{value: this.contactData.phone}];
+          googleContact.phoneNumbers = [{ value: this.contactData.phone }];
         }
 
         // 📌 Обрабатываем дополнительные пользовательские поля
         const userDefinedFields = this.fields
           .map(field => {
             const fieldValue = this.contactData.otherFields[field.name]?.trim();
-            return fieldValue ? {key: field.name, value: fieldValue} : null;
+            return fieldValue ? { key: field.name, value: fieldValue } : null;
           })
           .filter(field => field !== null); // Убираем пустые
 

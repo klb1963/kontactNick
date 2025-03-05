@@ -201,13 +201,14 @@ export class CategoryService {
         }
 
         return this.http.get<{ google_resource_name: string }>(
-          `/api/categories/${categoryId}/google-resource-name`,
+          `${this.baseUrl}/contact-groups/${categoryId}/google-resource-name`, // ✅ ПРАВИЛЬНЫЙ URL
           {
             headers: new HttpHeaders({ Authorization: `Bearer ${jwtAccessToken}` }),
             withCredentials: true
           }
         );
       }),
+      tap(response => console.log("🔍 Ответ от сервера:", response)), // ✅ Логируем ответ перед обработкой
       map(response => (response as { google_resource_name: string }).google_resource_name), // ✅ Фикс ошибки типа
       catchError(error => {
         console.error("❌ Ошибка получения Google Resource Name:", error);
