@@ -1,16 +1,16 @@
-import {Component, Inject, OnInit} from '@angular/core';
-import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
-import {CategoryService} from '../services/category.service';
-import {AuthService} from '../services/auth.service';
-import {GoogleContactsService} from '../services/google-contacts.service';
-import {CommonModule} from '@angular/common';
-import {FormsModule} from '@angular/forms';
-import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatInputModule} from '@angular/material/input';
-import {MatButtonModule} from '@angular/material/button';
-import {MatDialogModule} from '@angular/material/dialog';
-import {map, switchMap, take, tap} from 'rxjs/operators';
-import {catchError, throwError} from 'rxjs';
+import { Component, Inject, OnInit } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { CategoryService } from '../services/category.service';
+import { AuthService } from '../services/auth.service';
+import { GoogleContactsService } from '../services/google-contacts.service';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialogModule } from '@angular/material/dialog';
+import { map, switchMap, take, tap } from 'rxjs/operators';
+import { catchError, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-add-contact-dialog',
@@ -30,7 +30,7 @@ export class AddContactDialogComponent implements OnInit {
   categoryId: number = 0;
   categoryName: string = '';
   fields: any[] = [];
-  contactData: any = {name: '', nick: '', email: '', phone: '', otherFields: {}};
+  contactData: any = { name: '', nick: '', email: '', phone: '', otherFields: {} };
   currentUserNick: string = '';
 
   constructor(
@@ -53,14 +53,12 @@ export class AddContactDialogComponent implements OnInit {
   ngOnInit(): void {
     console.log("🛠️ Dialog opened with category:", this.categoryName, "ID:", this.categoryId);
 
-    // ✅ Получаем ник текущего пользователя
     this.authService.getUserProfile().subscribe(profile => {
       if (profile?.nick) {
         this.currentUserNick = profile.nick;
       }
     });
 
-    // ✅ Загружаем поля категории
     this.loadFields();
   }
 
@@ -83,9 +81,6 @@ export class AddContactDialogComponent implements OnInit {
     });
   }
 
-  // 1.	Перед отправкой контакта сначала запрашиваем google_resource_name.
-  // 2.	Используем этот google_resource_name в contactGroupMembership.
-  // 3.	Обработаны ошибки, если google_resource_name не найден.
   save(): void {
     if (!this.contactData.name?.trim() || !this.contactData.email?.trim()) {
       alert("⚠️ Please enter a valid name and email!");
@@ -100,7 +95,7 @@ export class AddContactDialogComponent implements OnInit {
     console.log("🔄 Проверяем access_token перед отправкой контакта...");
 
     this.authService.getGoogleAccessToken().pipe(
-      take(1), // ✅ Берем только первый ответ, избегаем утечек
+      take(1),
       tap(accessToken => {
         if (!accessToken) {
           throw new Error("❌ Ошибка: нет валидного Google Access Token!");
@@ -124,7 +119,6 @@ export class AddContactDialogComponent implements OnInit {
       next: ({ accessToken, googleResourceName }) => {
         console.log("✅ Получен Google Resource Name:", googleResourceName);
 
-        // 📌 Формируем объект контакта для Google API
         const googleContact: any = {
           names: [{ givenName: this.contactData.name }],
           emailAddresses: [{ value: this.contactData.email }],
@@ -135,13 +129,12 @@ export class AddContactDialogComponent implements OnInit {
           googleContact.phoneNumbers = [{ value: this.contactData.phone }];
         }
 
-        // 📌 Обрабатываем дополнительные пользовательские поля
         const userDefinedFields = this.fields
           .map(field => {
             const fieldValue = this.contactData.otherFields[field.name]?.trim();
             return fieldValue ? { key: field.name, value: fieldValue } : null;
           })
-          .filter(field => field !== null); // Убираем пустые
+          .filter(field => field !== null);
 
         if (userDefinedFields.length > 0) {
           googleContact.userDefined = userDefinedFields;
@@ -150,7 +143,7 @@ export class AddContactDialogComponent implements OnInit {
         console.log("📤 Итоговый JSON перед отправкой:", googleContact);
         this.saveContactToGoogle(googleContact, googleResourceName);
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error("❌ Ошибка при обработке контакта:", error);
         alert(error.message || "❌ Произошла ошибка! Проверьте настройки.");
       }
@@ -175,7 +168,7 @@ export class AddContactDialogComponent implements OnInit {
               this.contactData.contactGroupResourceName = googleResourceName;
               this.dialogRef.close(this.contactData);
             },
-            error: (err) => {
+            error: (err: any) => {
               console.error("❌ Error adding contact to category:", err);
               alert("❌ Контакт создан, но не добавлен в категорию.");
             }
@@ -185,8 +178,8 @@ export class AddContactDialogComponent implements OnInit {
           alert("❌ Ошибка: Google API не вернул resourceName.");
         }
       },
-      error: (err) => {
-        console.error("❌ Error creating contact:", err);
+      error: (err: any) => {
+        console.error("❌ Ошибка при добавлении контакта в Google:", err);
         alert("❌ Ошибка при добавлении контакта в Google.");
       }
     });

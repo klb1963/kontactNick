@@ -8,11 +8,12 @@ import kontactNick.service.GoogleContactsService;
 import kontactNick.service.OAuth2AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
@@ -22,12 +23,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/google")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:4200")  // Разрешаем CORS для Angular
 public class GoogleContactsController {
 
     private final GoogleContactsService googleContactsService;
     private final GoogleCategoryService googleCategoryService;
     private final UserRepository userRepository;
     private final OAuth2AuthenticationService oAuth2AuthenticationService;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     // ✅ Получение токена из БД пользователя
     @GetMapping("/token")
@@ -151,4 +154,25 @@ public class GoogleContactsController {
         // ✅ Передаём user и корректные аргументы
         return googleContactsService.addContactToGoogleCategory(user, Long.valueOf(groupId), contactResourceName);
     }
+
+
+    @PostMapping("/create-contact")
+    public ResponseEntity<String> createGoogleContact(@RequestBody Map<String, Object> contactData,
+                                                      @RequestHeader("Authorization") String token) {
+        String googleApiUrl = "https://people.googleapis.com/v1/people:createContact";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", token); // Передаём Google Access Token
+        headers.set("Content-Type", "application/json");
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(contactData, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(googleApiUrl, HttpMethod.POST, request, String.class);
+            return ResponseEntity.ok(response.getBody());
+        } catch (HttpClientErrorException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBodyAsString());
+        }
+    }
+
 }
