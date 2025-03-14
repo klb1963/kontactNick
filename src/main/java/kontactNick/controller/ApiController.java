@@ -2,14 +2,19 @@ package kontactNick.controller;
 
 import kontactNick.dto.CategoryDto;
 import kontactNick.dto.FieldDto;
+import kontactNick.dto.UserDto;
 import kontactNick.dto.UserProfileDto;
 import kontactNick.entity.Category;
 import kontactNick.entity.Field;
 import kontactNick.entity.User;
+import kontactNick.exception_handling.exceptions.DuplicateEmailException;
+import kontactNick.exception_handling.exceptions.NickAlreadyTakenException;
+import kontactNick.exception_handling.exceptions.UserNotFoundException;
 import kontactNick.repository.CategoryRepository;
 import kontactNick.repository.FieldRepository;
 import kontactNick.repository.UserRepository;
 import kontactNick.service.UserService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -32,104 +37,92 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class ApiController {
 
-    private final UserRepository userRepository;
-
-    @Autowired
-    public ApiController(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
+    private final UserService userService;
 
     // ✅ Главная страница API
     @GetMapping("/")
-    public String apiRoot() {
-        return "Welcome to KontactNick API";
+    public ResponseEntity<String> apiRoot() {
+        return ResponseEntity.ok("Welcome to KontactNick API");
     }
 
     // ✅ Создание нового пользователя
     @PostMapping("/users")
-    public String createUser(@RequestBody User user) {
-        userRepository.save(user);
-        return "User " + user.getNick() + " created!";
+    public ResponseEntity<?> createUser(@RequestBody UserDto userDto) {
+        try {
+            userService.register(userDto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "User created successfully",
+                    "email", userDto.getEmail(),
+                    "nick", userDto.getNick() != null ? userDto.getNick() : userDto.getEmail()
+            ));
+        } catch (DuplicateEmailException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     // ✅ Получение пользователя по email
     @GetMapping("/users/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
-        return ResponseEntity.of(userRepository.findByEmail(email));
+    public ResponseEntity<?> getUserByEmail(@PathVariable String email) {
+        if (!email.contains("@")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid email format"));
+        }
+        try {
+            User user = userService.getUserByEmail(email);
+            return ResponseEntity.ok(user);
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        }
     }
 
-    /**
-     * ✅ Получение профиля текущего пользователя
-     */
+    // ✅ Получение профиля текущего пользователя
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
-            log.warn("❌ Пользователь не аутентифицирован");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User not authenticated"));
         }
-
-        String email = userDetails.getUsername();
-
-        if (email == null || email.isBlank()) {
-            log.error("❌ Ошибка: у аутентифицированного пользователя отсутствует email!");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Email is missing"));
+        try {
+            User user = userService.getUserByEmail(userDetails.getUsername());
+            return ResponseEntity.ok(Map.of(
+                    "email", user.getEmail(),
+                    "nick", user.getNick(),
+                    "avatarUrl", user.getAvatarUrl(),
+                    "role", user.getRole()
+            ));
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
-
-        Optional<User> userOpt = userRepository.findByEmail(email);
-
-        if (userOpt.isEmpty()) {
-            log.warn("❌ Пользователь с email {} не найден в базе данных", email);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found"));
-        }
-
-        User user = userOpt.get();
-
-        log.info("📌 User details: email={}, nick={}, avatar={}, role={}",
-                user.getEmail(), user.getNick(), user.getAvatarUrl(), user.getRole());
-
-        log.info("✅ Профиль пользователя загружен: {}", email);
-        return ResponseEntity.ok(Map.of(
-                "email", user.getEmail(),
-                "nick", user.getNick() != null ? user.getNick() : "",
-                "avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
-                "role", user.getRole() != null ? user.getRole() : "USER"
-        ));
     }
 
-    // ✅ Проверка доступности nick
+    // ✅ Проверка доступности никнейма
     @GetMapping("/check-nick")
     public ResponseEntity<?> checkNickAvailability(@RequestParam String nick) {
-        boolean isAvailable = userRepository.findByNick(nick).isEmpty();
-        log.info("🔍 Проверка nick '{}': {}", nick, isAvailable ? "доступен" : "занят");
+        boolean isAvailable = userService.isNickAvailable(nick);
         return ResponseEntity.ok(Map.of("available", isAvailable));
     }
 
-    // ✅ Обновление nick текущего пользователя
+    // ✅ Обновление никнейма текущего пользователя
     @PutMapping("/profile/nick")
     public ResponseEntity<?> updateNick(@AuthenticationPrincipal UserDetails userDetails,
                                         @RequestBody Map<String, String> request) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User not authenticated"));
+        }
+
         String newNick = request.get("nick");
-
-        if (newNick == null || newNick.isBlank()) {
-            log.warn("❌ Попытка сохранить пустой nick");
-            return ResponseEntity.badRequest().body(Map.of("error", "Nick cannot be empty"));
+        try {
+            userService.updateNick(userDetails.getUsername(), newNick);
+            return ResponseEntity.ok(Map.of("message", "Nick updated successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (NickAlreadyTakenException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
-
-        if (userRepository.findByNick(newNick).isPresent()) {
-            log.warn("❌ Nick '{}' уже занят", newNick);
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Nick already taken"));
-        }
-
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-        user.setNick(newNick);
-        userRepository.save(user);
-
-        log.info("✅ Nick пользователя '{}' обновлен на '{}'", user.getEmail(), newNick);
-        return ResponseEntity.ok(Map.of("message", "Nick updated successfully"));
     }
-
 }

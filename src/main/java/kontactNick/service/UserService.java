@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import kontactNick.dto.GoogleUser;
+import kontactNick.exception_handling.exceptions.DuplicateEmailException;
+import kontactNick.exception_handling.exceptions.NickAlreadyTakenException;
+import kontactNick.exception_handling.exceptions.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import kontactNick.dto.UserDto;
@@ -32,16 +35,16 @@ public class UserService {
     private final JwtTokenProvider jwtTokenProvider;
 
     /**
-     * ✅ Регистрирует нового пользователя по email и password
+     * ✅ Регистрирует нового пользователя
      */
     public void register(UserDto userDto) {
         if (userRepository.existsByEmail(userDto.getEmail())) {
-            throw new IllegalArgumentException("Email уже используется");
+            throw new DuplicateEmailException("Email уже используется");
         }
 
         User user = new User();
         user.setEmail(userDto.getEmail());
-        user.setNick(userDto.getEmail());
+        user.setNick(userDto.getNick() != null ? userDto.getNick() : userDto.getEmail());
         user.setRole(Roles.ROLE_USER);
         user.setPassword(passwordEncoder.encode(userDto.getPassword()));
 
@@ -50,45 +53,63 @@ public class UserService {
     }
 
     /**
-     * ✅ Аутентификация пользователя
+     * ✅ Аутентификация пользователя и генерация JWT
      */
     public String authenticate(String email, String password) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> {
-                    log.error("❌ Ошибка аутентификации: Email не найден: {}", email);
-                    return new BadCredentialsException("Неверный email или пароль");
-                });
+        User user = getUserByEmail(email);
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
             log.error("❌ Ошибка аутентификации: Неверный пароль для {}", email);
             throw new BadCredentialsException("Неверный email или пароль");
         }
 
-        // 🔹 Можно добавить обновление времени последнего входа, если нужно
-        // user.setLastLogin(Instant.now());
-
-        // 💾 Сохраняем пользователя в базе данных
-        userRepository.save(user);
-        log.info("💾 Сохраняем пользователя в базе данных: {}", user.getEmail());
-
         log.info("🚀 Генерация JWT для пользователя: {}", email);
         return jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
     }
 
     /**
-     * ✅ Получает текущий ник пользователя
+     * ✅ Получение пользователя по email
+     */
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден: " + email));
+    }
+
+    /**
+     * ✅ Проверка доступности никнейма
+     */
+    public boolean isNickAvailable(String nick) {
+        return userRepository.findByNick(nick).isEmpty();
+    }
+
+    /**
+     * ✅ Обновление никнейма пользователя
+     */
+    public void updateNick(String email, String newNick) {
+        if (newNick == null || newNick.isBlank()) {
+            throw new IllegalArgumentException("Nick cannot be empty");
+        }
+
+        if (!isNickAvailable(newNick)) {
+            throw new NickAlreadyTakenException("Nick уже занят");
+        }
+
+        User user = getUserByEmail(email);
+        user.setNick(newNick);
+        userRepository.save(user);
+        log.info("✅ Nick пользователя '{}' обновлен на '{}'", user.getEmail(), newNick);
+    }
+
+    /**
+     * ✅ Получает текущий ник пользователя (для OAuth2)
      */
     public String getCurrentUserNick() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof OAuth2User oauth2User) {
-            String nick = oauth2User.getAttribute("nickname");
-            if (nick == null) {
-                nick = oauth2User.getAttribute("name");
-            }
-            if (nick == null) {
-                nick = oauth2User.getAttribute("preferred_username");
-            }
-            return nick != null ? nick : "Unknown";
+            return oauth2User.getAttribute("nickname") != null ? oauth2User.getAttribute("nickname") :
+                    oauth2User.getAttribute("name") != null ? oauth2User.getAttribute("name") :
+                            oauth2User.getAttribute("preferred_username") != null ? oauth2User.getAttribute("preferred_username") :
+                                    "Unknown";
         }
         return "Unknown";
     }

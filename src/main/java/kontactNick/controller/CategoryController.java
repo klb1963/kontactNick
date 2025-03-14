@@ -26,10 +26,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 @Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/categories")
 @PreAuthorize("hasAuthority('ROLE_USER')")
 @RequiredArgsConstructor
 public class CategoryController {
@@ -38,10 +37,9 @@ public class CategoryController {
     private final CategoryRepository categoryRepository;
     private final FieldRepository fieldRepository;
     private final FieldService fieldService;
-    private final CategoryService categoryService;
 
-    // ✅ Создание категории
-    @PostMapping("/categories")
+    // ✅ Создание категории (Только локально, без Google)
+    @PostMapping
     public ResponseEntity<Category> createCategory(@Valid @RequestBody CategoryDto categoryDto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         log.debug("🔑 Authenticated user: {}", email);
@@ -57,28 +55,26 @@ public class CategoryController {
         category.setDescription(categoryDto.getDescription());
         category.setUser(user);
 
+        // 🔥 Сохраняем только в локальной базе (без Google)
         Category savedCategory = categoryRepository.save(category);
-
-        savedCategory = categoryService.createCategoryWithGoogleSync(category, user);
-
-        log.info("✅ Created category '{}' for user '{}'", savedCategory.getName(), email);
+        log.info("✅ Created local category '{}' for user '{}'", savedCategory.getName(), email);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(savedCategory);
     }
 
-    // ✅ Получение категории
-    @GetMapping("/categories/{id}")
+    // ✅ Получение одной категории
+    @GetMapping("/{id}")
     public ResponseEntity<CategoryDto> getCategoryById(@PathVariable Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
         return ResponseEntity.ok(new CategoryDto(category.getId(), category.getName(), category.getDescription()));
     }
 
-    // ✅ Получение всех категорий пользователя
-    @GetMapping("/categories")
+    // ✅ Получение всех локальных категорий пользователя
+    @GetMapping
     public ResponseEntity<List<Category>> getCategories() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        log.debug("📌 Fetching categories for user: {}", email);
+        log.debug("📌 Fetching local categories for user: {}", email);
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
@@ -87,30 +83,13 @@ public class CategoryController {
                 });
 
         List<Category> categories = categoryRepository.findByUser_Email(email);
-        log.info("📂 Found {} categories for user {}", categories.size(), email);
+        log.info("📂 Found {} local categories for user {}", categories.size(), email);
 
         return ResponseEntity.ok(categories);
     }
 
-    // ✅ Добавление одного поля в категорию (с проверкой владельца)
-    @PostMapping("/categories/{categoryId}/field")
-    public ResponseEntity<Field> addFieldToCategory(@PathVariable Long categoryId, @RequestBody FieldDto fieldRequest) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        log.debug("📌 Adding field to category ID: {} by user: {}", categoryId, email);
-
-        // Передаём данные в сервис для добавления поля
-        Field savedField = fieldService.addFieldToCategory(categoryId, fieldRequest, email);
-
-        log.info("✅ Field '{}' added to category '{}'", savedField.getName(), savedField.getCategory().getName());
-
-        return ResponseEntity
-                .ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(savedField); // Возвращаем сохранённое поле
-    }
-
-    // ✅ Обновление категории (с проверкой владельца)
-    @PutMapping("/categories/{categoryId}")
+    // ✅ Обновление категории (Только локально, без Google)
+    @PutMapping("/{categoryId}")
     public ResponseEntity<Category> updateCategory(@PathVariable Long categoryId, @RequestBody CategoryDto categoryDto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -125,12 +104,12 @@ public class CategoryController {
         category.setDescription(categoryDto.getDescription());
         categoryRepository.save(category);
 
-        log.info("✅ Updated category '{}' for user '{}'", category.getName(), email);
+        log.info("✅ Updated local category '{}' for user '{}'", category.getName(), email);
         return ResponseEntity.ok(category);
     }
 
-    // ✅ Удаление категории (с проверкой владельца)
-    @DeleteMapping("/categories/{categoryId}")
+    // ✅ Удаление категории (Только локально, без Google)
+    @DeleteMapping("/{categoryId}")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -142,43 +121,24 @@ public class CategoryController {
                 });
 
         categoryRepository.delete(category);
-        log.info("🗑 Deleted category '{}' for user '{}'", category.getName(), email);
+        log.info("🗑 Deleted local category '{}' for user '{}'", category.getName(), email);
         return ResponseEntity.noContent().build();
     }
 
-    // ✅ Получение полей категории с проверкой владельца
-    @GetMapping("/categories/{categoryId}/fields")
+    // ✅ Получение полей категории (Локально)
+    @GetMapping("/{categoryId}/fields")
     public ResponseEntity<List<FieldDto>> getFieldsByCategory(@PathVariable Long categoryId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        log.debug("📌 Fetching fields for category ID: {} by user: {}", categoryId, email);
+        log.debug("📌 Fetching fields for local category ID: {} by user: {}", categoryId, email);
 
-        // Проверим наличие пользователя в контексте безопасности
-        if (email == null || email.isEmpty()) {
-            log.warn("❌ No authenticated user found in SecurityContext.");
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
-        }
-
-        // Поиск категории и проверка владельца
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> {
-                    log.warn("❌ Category {} not found in the database.", categoryId);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found");
-                });
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
 
-        // 🔍 Проверка владельца категории
-        boolean isOwner = category.getUser().getEmail().equals(email);
-        log.debug("🔍 Ownership check for category '{}': Expected owner '{}', actual owner '{}'",
-                category.getName(), email, category.getUser().getEmail());
-
-        if (!isOwner) {
-            log.warn("❌ Access denied. Category '{}' (ID: {}) does not belong to user '{}'",
-                    category.getName(), categoryId, email);
+        if (!category.getUser().getEmail().equals(email)) {
+            log.warn("❌ Access denied. Category '{}' does not belong to user '{}'", category.getName(), email);
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 
-        log.debug("✅ Category '{}' (ID: {}) belongs to user '{}'", category.getName(), categoryId, email);
-
-        // Преобразование полей в DTO для ответа
         List<FieldDto> fields = category.getFields().stream()
                 .map(field -> new FieldDto(
                         field.getId(),
@@ -192,22 +152,20 @@ public class CategoryController {
         return ResponseEntity.ok(fields);
     }
 
-    // Удаление поля из категории
-    @DeleteMapping("/categories/{categoryId}/fields/{fieldId}")
-    public ResponseEntity<Void> deleteField(@PathVariable Long categoryId, @PathVariable Long fieldId) {
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+    // ✅ Добавление поля в категорию (Локально)
+    @PostMapping("/{categoryId}/fields")
+    public ResponseEntity<Field> addFieldToCategory(@PathVariable Long categoryId, @RequestBody FieldDto fieldRequest) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.debug("📌 Adding field to local category ID: {} by user: {}", categoryId, email);
 
-        Field field = fieldRepository.findById(fieldId)
-                .filter(f -> f.getCategory().getId().equals(categoryId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Field not found or doesn't belong to category"));
+        Field savedField = fieldService.addFieldToCategory(categoryId, fieldRequest, email);
+        log.info("✅ Field '{}' added to category '{}'", savedField.getName(), savedField.getCategory().getName());
 
-        fieldRepository.delete(field);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(savedField);
     }
 
-    // Обновление поля в категории
-    @PutMapping("/categories/{categoryId}/fields/{fieldId}")
+    // ✅ Обновление поля в категории (Локально)
+    @PutMapping("/{categoryId}/fields/{fieldId}")
     public ResponseEntity<FieldDto> updateField(
             @PathVariable Long categoryId,
             @PathVariable Long fieldId,
@@ -234,4 +192,24 @@ public class CategoryController {
         return ResponseEntity.ok(new FieldDto(field.getId(), field.getName(), field.getDescription(), field.getFieldType(), field.getValue()));
     }
 
+    // ✅ Удаление поля из категории (Локально)
+    @DeleteMapping("/{categoryId}/fields/{fieldId}")
+    public ResponseEntity<Void> deleteField(@PathVariable Long categoryId, @PathVariable Long fieldId) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.debug("🗑 Deleting field ID: {} from local category ID: {} for user: {}", fieldId, categoryId, email);
+
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+
+        Field field = fieldRepository.findById(fieldId)
+                .filter(f -> f.getCategory().getId().equals(categoryId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Field not found or doesn't belong to category"));
+
+        if (!category.getUser().getEmail().equals(email)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+
+        fieldRepository.delete(field);
+        return ResponseEntity.noContent().build();
+    }
 }
